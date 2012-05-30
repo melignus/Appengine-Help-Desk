@@ -1,0 +1,168 @@
+{% extends "layout.html" %}
+{% block title %}{{ page_params['title'] }}{% endblock %}
+{% block brand %}{{ page_params['title'] }}{% endblock %}
+
+{% block script %}
+<script>
+    function clearForm(form){
+        form[0].reset();
+        $('.help-inline', form).hide();
+        $('.control-group', form).each(function(){
+            $(this).removeClass('error');
+        });
+    };
+
+    $(document).ready(function(){
+        $('.alternate').each(function() {
+            $(this).hide();
+        });
+        $('.has-alternate').click(function() {
+            var otherInput = false;
+            var thisId = $('.control-label', this).attr('for');
+            var thisAlternate = $('.alternate', this);
+            $(':input', this).each(function(){
+                if ($(this).val() == 'Other' && $(this).attr('checked')){
+                    otherInput = true;
+                }
+            });
+            if ($(('#'+thisId)).val() == 'Other' || otherInput){
+                thisAlternate.show();
+            } else {
+                thisAlternate.hide();
+            }
+        });
+        $('#clearTicket').click(function(){
+            clearForm($('#newTicket'));
+        });
+        $('#submitTicket').click(function(){
+            var formData = {};
+            if ($('#ticketSite').val() == 'Other'){
+                formData['ticketSite'] = $('#altTicketSite').val();
+            } else {
+                formData['ticketSite'] = $('#ticketSite').val();
+            }
+            $('#ticketType :input').each(function(){
+                if($(this).attr('checked')){
+                    if($(this).val() == 'Other'){
+                        formData['ticketType'] = $('#altTicketType').val();
+                    } else {
+                        formData['ticketType'] = $(this).val();
+                    }
+                }
+            });
+            $('#ticketUserType :input').each(function(){
+                if($(this).attr('checked')){
+                    if($(this).val() == 'Other'){
+                        formData['ticketUserType'] = $('#altTicketUserType').val();
+                    } else {
+                        formData['ticketUserType'] = $(this).val();
+                    }
+                }
+            });
+            formData['ticketMacroLocation'] = $('#ticketMacroLocation').val();
+            formData['ticketMicroLocation'] = $('#ticketMicroLocation').val();
+            formData['ticketDescription'] = $('#ticketDescription').val();
+            console.log(formData);
+            $.ajax({
+                type: 'POST',
+                url: '/new_ticket',
+                dataType: 'json',
+                data: formData,
+                success: function(result){
+                    console.log(result);
+                },
+            });
+        });
+    });
+</script>
+{% endblock %}
+
+{% block top %}
+<div style="text-align:center;">
+    <h1>{{ page_params['title'] }}</h1>
+    <h6>{{ page_params['message'] }}</h6>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="span6 offset2">
+    <form class="well form form-inline form-horizontal" style="text-align:center;" id="newTicket">
+        <div class="control-group has-alternate">
+            <label class="control-label" for="ticketSite"><strong>Site:</strong></label>
+            <div class="controls">
+                <select name="ticketSite" id="ticketSite">
+                    {% for site in page_params['sites'] %}
+                    <option value="{{ site }}">{{ site }}</option>
+                    {% endfor %}
+                    <option value="Other">Other</option>
+                </select>
+                <div class="alternate">
+                    <input class="input" name="ticketSite" id="altTicketSite">
+                </div>
+            </div>
+        </div>
+        <div class="control-group has-alternate">
+            <label class="control-label" for="ticketType"><strong>Equipment Type:</strong></label>
+            <div class="controls" id="ticketType">
+                <label class="radio inline">
+                    <input type="radio" checked="true" value="computer" name="ticketType">Computer
+                </label>
+                <label class="radio inline">
+                    <input type="radio" checked="" value="printer" name="ticketType">Printer
+                </label>
+                <label class=" radio inline">
+                    <input type="radio" checked="" value="Other" name="ticketType">Other
+                </label>
+                <div class="alternate">
+                    <input class="input" name="ticketType" id="altTicketType">
+                </div>
+            </div>
+        </div>
+        <div class="control-group has-alternate">
+            <label class="control-label" for="ticketUserType"><strong>User Type:</strong></label>
+            <div class="controls" id="ticketUserType">
+                <label class="radio inline">
+                    <input type="radio" checked="true" value="staff" name="ticketUserType">Staff
+                </label>
+                <label class="radio inline">
+                    <input type="radio" checked="" value="teacher" name="ticketUserType">Teacher
+                </label>
+                <label class="radio inline">
+                    <input type="radio" checked="" value="student" name="ticketUserType">Student
+                </label>
+                <label class="radio inline">
+                    <input type="radio" checked="" value="Other" name="ticketUserType">Other
+                </label>
+                <div class="alternate">
+                    <input class="input" name="ticketUserType" id="altTicketUserType">
+                </div>
+            </div>
+        </div>
+        <div class="control-group">
+            <label class="control-label" for="ticketMacroLocation"><strong>Room/Building:</strong></label>
+            <div class="controls">
+                <input class="input" name="ticketMacroLocation" id="ticketMacroLocation">
+            </div>
+        </div>
+        <div class="control-group">
+            <label class="control-label" for="ticketMicroLocation"><strong>Where in Room:</strong></label>
+            <div class="controls">
+                <input class="input" name="ticketMicroLocation" id="ticketMicroLocation">
+            </div>
+        </div>
+        <div class="control-group">
+            <label class="control-label" for="ticketDescription"><strong>Brief Description:</strong></label>
+            <div class="controls">
+                <textarea name="ticketDescription" id="ticketDescription" rows="4"></textarea>
+            </div>
+        </div>
+        <div class="form-actions">
+            <a href="#" class="btn btn-primary" id="submitTicket">Submit Ticket</a>
+            <a href="#" class="btn" id="clearTicket">Clear Ticket</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block footer %}
+{% endblock %}

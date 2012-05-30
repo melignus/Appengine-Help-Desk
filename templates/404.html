@@ -1,0 +1,14 @@
+{% extends "layout.html" %}
+{% block title %}{{ page_params['title'] }}{% endblock %}
+{% block brand %}{{ page_params['title'] }}{% endblock %}
+
+{% block top %}
+<div style="text-align:center;">
+    <h1>{{ page_params['title'] }}</h1>
+    <h6>{{ page_params['message'] }}</h6>
+</div>
+{% endblock %}
+
+{% block content %}
+    <img style="display:block;margin-top:40px;margin-left:auto;margin-right:auto;" src="/static/img/404.png" alt="404 Error" />
+{% endblock %}

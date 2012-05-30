@@ -1,0 +1,48 @@
+<!doctype html>
+<html>
+    <head>
+        {% block head %}
+        <title>HBUHSD Help Desk - {% block title %}{% endblock %}</title>
+        <script type="text/javascript" src="/static/js/jquery-1.7.2.min.js"></script>
+        <script type="text/javascript" src="/static/js/jquery-ui-1.8.20.custom.min.js"></script>
+        <script type="text/javascript" src="/static/js/bootstrap.min.js"></script>
+        <script type="text/javascript" src="/static/js/bootstrap-modal.js"></script>
+        <script type="text/javascript" src="/static/js/underscore-min.js"></script>
+        <script type="text/javascript" src="/static/js/backbone-min.js"></script>
+
+        <link rel="shortcut icon" href="/static/favicon.ico" />
+        <link rel="stylesheet" href="/static/css/bootstrap.min.css" />
+        <link rel="stylesheet" href="/static/css/bootstrap-responsive.min.css" />
+        <link rel="stylesheet" href="/static/css/jquery-ui-1.8.20.custom.css" />
+
+        {% block script %}{% endblock %}
+        {% endblock %}
+    </head>
+    <body>
+        <div class="container">
+            <div class="navbar navbar-fixed-top">
+                <div class="navbar-inner">
+                    <a class="brand" href="#">HBUHSD Help Desk - {% block brand %}{% endblock %}</a>
+                    <ul class="nav">
+                        <li class="divider-vertical"></li>
+                        {% block menu %}{% endblock %}
+                    </ul>
+                </div>
+            </div>
+            <div class="row" style="margin-top:40px;">
+                <div class="span10 offset1">
+                    <div class="row">{% block top %}{% endblock %}</div>
+                    <div class="row">{% block content %}{% endblock %}</div>
+                    <div class="row">
+                        <div class="footer" style="text-align:center;">
+                            {% block footer %}
+                            {% endblock %}
+                            <hr>
+                            HBUHSD Forms via Flask and Twitter Bootstrap on Python/Google App Engine
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </body>
+</html>

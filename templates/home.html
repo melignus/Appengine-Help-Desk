@@ -1,0 +1,154 @@
+{% extends "layout.html" %}
+{% block title %}{{ page_params['title'] }}{% endblock %}
+{% block brand %}{{ page_params['title'] }}{% endblock %}
+
+{% block script %}
+
+<script>
+    var Ticket = Backbone.Model.extend({
+        elevate: function(){
+            console.log('Elevating...');
+            return true;
+        },
+        closeTicket: function(){
+            console.log('Closing...');
+            return true;
+        },
+        addNote: function(){
+            console.log('addingNote...');
+            return true;
+        },
+    });
+
+    var Tickets = Backbone.Collection.extend({
+        model: Ticket,
+        url: '/tickets',
+        closed: function(){
+            console.log('Getting closed tickets...');
+            return true;
+        },
+        open: function(){
+            console.log('Getting open tickets...');
+            return true;
+        },
+    });
+
+    var TicketView = Backbone.View.extend({
+        tagName: 'tbody',
+        events: {
+            "click .close": "closeTicket",
+            "click .addNote": "addNote",
+            "click .elevate": "elevate",
+        },
+        initialize: function(){
+        },
+        render: function(){
+            var self = this;
+            var thisTicket = self.model.attributes;
+            thisHTML = "<tr><td>"+thisTicket.ticketType+"</td><td>"+thisTicket.ticketUserType+"</td><td>"+thisTicket.ticketSubmittedBy+"</td></tr>";
+            return thisHTML;
+        },
+        closeTicket: function(){
+            return true;
+        },
+        addNote: function(){
+            return true;
+        },
+        elevate: function(){
+            return true;
+        },
+    });
+
+    var HelpDesk = Backbone.View.extend({
+        tickets: new Tickets(),
+        initialize: function(options){
+            var self = this;
+            self.tableHeader = "<h3>Open Tickets:</h3>";
+            self.columnHeaders = "<tr><th>Col1</th><th>Col2</th><th>Col3</th></tr>";
+            self.delegateEvents();
+
+            self.tickets.bind('add', self.addOne, self);
+            self.tickets.bind('reset', self.addAll, self);
+            self.tickets.bind('all', self.render, self);
+
+            self.tickets.fetch();
+        },
+        render: function(){
+            var self = this;
+            $('#tableHeader').html(self.tableHeader);
+            $('#tableBody').html(self.columnHeaders);
+        },
+        addOne: function(ticket){
+            console.log('addOne...');
+            var view = new TicketView({model: ticket});
+            console.log(view.render());
+            $('#tableBody').append(view.render());//closest("tr").after(view.render());
+        },
+        addAll: function(){
+            console.log('addAll...');
+            this.tickets.each(this.addOne);
+        },
+    });
+    /*var TicketView = Backbone.View.extend({
+        tickets: new Tickets(),
+        tagName: "tr",
+        events: {
+            "click .close"      : "closeTicket",
+            "click .notes"      : "addNote",
+            "click .elevate"    : "elevate",
+        },
+        initialize: function(){
+            console.log('initializing TicketView...');
+            var self = this;
+
+            self.el = $('#supportTickets');
+            self.delegateEvents();
+            self.tickets.bind('add', self.addOne, self);
+            self.tickets.bind('reset', self.addAll, self);
+            self.tickets.bind('all', self.render, self);
+
+            self.tickets.fetch();
+        },
+        render: function(){
+            console.log('rendering TicketView...');
+            var self = this;
+            var data = {
+                total: self.tickets.length,
+                closed: self.tickets.closed().length,
+                open: self.tickets.open().length,
+            };
+        },
+        closeTicket: function(){
+        },
+        addNote: function(){
+        },
+        elevate: function(){
+        },
+    });*/
+
+    $(document).ready(function(){
+        manageTickets = new HelpDesk({el: $('#supportTickets')});
+    });
+</script>
+{% endblock %}
+
+{% block top %}
+<div style="text-align:center;">
+    <h1>{{ page_params['title'] }}</h1>
+    <h6>{{ page_params['message'] }}</h6>
+</div>
+{% endblock %}
+
+{% block content %}
+<div id="supportTickets">
+    <table class="table table-striped table-condensed">
+        <thead id="tableHeader">
+        </thead>
+        <tbody id="tableBody">
+        </tbody>
+    </table>
+</div>
+{% endblock %}
+
+{% block footer %}
+{% endblock %}

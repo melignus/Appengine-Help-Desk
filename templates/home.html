@@ -3,19 +3,15 @@
 {% block brand %}{{ page_params['title'] }}{% endblock %}
 
 {% block script %}
-
 <script>
     var Ticket = Backbone.Model.extend({
         elevate: function(){
-            console.log('Elevating...');
             return true;
         },
         closeTicket: function(){
-            console.log('Closing...');
             return true;
         },
         addNote: function(){
-            console.log('addingNote...');
             return true;
         },
     });
@@ -24,38 +20,84 @@
         model: Ticket,
         url: '/tickets',
         closed: function(){
-            console.log('Getting closed tickets...');
             return true;
         },
         open: function(){
-            console.log('Getting open tickets...');
             return true;
         },
     });
 
-    var TicketView = Backbone.View.extend({
-        tagName: 'tbody',
+    var SingleTicket = Backbone.View.extend({
         events: {
-            "click .close": "closeTicket",
-            "click .addNote": "addNote",
-            "click .elevate": "elevate",
+            "dblclick .addNote": "addNote",
         },
         initialize: function(){
+            var self = this;
+            self.model.bind('change', self.render, self);
+            self.notesRendered = self.renderNotes();
         },
         render: function(){
             var self = this;
             var thisTicket = self.model.attributes;
-            thisHTML = "<tr><td>"+thisTicket.ticketType+"</td><td>"+thisTicket.ticketUserType+"</td><td>"+thisTicket.ticketSubmittedBy+"</td></tr>";
-            return thisHTML;
-        },
-        closeTicket: function(){
-            return true;
+            $(self.el).html('<div class="span6 well">'+
+                thisTicket.id+
+                '</div><div class="span3 well addNote">'+
+                self.notesRendered+
+                '</div>'
+                );
+            return self
         },
         addNote: function(){
-            return true;
+            console.log('addNote...');
         },
-        elevate: function(){
-            return true;
+        renderNotes: function(){
+            console.log('renderNotes...');
+            var self = this;
+            var thisTicket = self.model.attributes;
+            var theseMessages = thisTicket.ticketNotes;
+            var thisHTML = "";
+            for (var i=0;i<=theseMessages.length-1;i++){
+                thisHTML+="<p>"+theseMessages[i]+"</p>";
+            };
+
+            return thisHTML;
+        },
+    });
+
+    var TicketView = Backbone.View.extend({
+        tagName: 'tr',
+        events: {
+            "click .closeTicket": "closeTicket",
+            "dblclick": "expandTicket",
+        },
+        initialize: function(){
+            this.model.bind('change', this.render, this);
+        },
+        render: function(){
+            var self = this;
+            var thisTicket = self.model.attributes;
+            $(self.el).html("<td>"+thisTicket.ticketSubmittedBy+
+                    "</td><td>"+thisTicket.ticketType+
+                    "</td><td>"+thisTicket.ticketUserType+
+                    "</td><td>"+thisTicket.ticketMacroLocation+
+                    "</td><td>"+thisTicket.ticketSubmittedOn+
+                    "</td><td>"+"<a class=\"btn btn-primary btn-mini closeTicket\">Close</a>"+
+                    "</td>");
+            return self;
+        },
+        contextMenu: function(e){
+            e.preventDefault();
+            console.log('contextMenu...');
+        },
+        expandTicket: function(){
+            console.log('expandTicket...');
+            var thisTicket = new SingleTicket({
+                model: this.model,
+            });
+            $('#ticketExpand').html(thisTicket.render().el);
+        },
+        closeTicket: function(){
+            console.log('closeTicket...');
         },
     });
 
@@ -64,7 +106,14 @@
         initialize: function(options){
             var self = this;
             self.tableHeader = "<h3>Open Tickets:</h3>";
-            self.columnHeaders = "<tr><th>Col1</th><th>Col2</th><th>Col3</th></tr>";
+            self.columnHeaders = "<tr>\
+                <th>SubmittedBy</th>\
+                <th>Type</th>\
+                <th>User</th>\
+                <th>Room</th>\
+                <th>SubmittedOn</th>\
+                <th>Close</th>\
+            </tr>";
             self.delegateEvents();
 
             self.tickets.bind('add', self.addOne, self);
@@ -75,59 +124,23 @@
         },
         render: function(){
             var self = this;
-            $('#tableHeader').html(self.tableHeader);
-            $('#tableBody').html(self.columnHeaders);
+            $('thead', self.el).append(self.tableHeader);
+            $('thead', self.el).append(self.columnHeaders);
         },
         addOne: function(ticket){
-            console.log('addOne...');
-            var view = new TicketView({model: ticket});
-            console.log(view.render());
-            $('#tableBody').append(view.render());//closest("tr").after(view.render());
+            var self = this;
+            var view = new TicketView({
+                model: ticket,
+            });
+            $('tbody', self.el).append(view.render().el);
         },
         addAll: function(){
-            console.log('addAll...');
             this.tickets.each(this.addOne);
         },
     });
-    /*var TicketView = Backbone.View.extend({
-        tickets: new Tickets(),
-        tagName: "tr",
-        events: {
-            "click .close"      : "closeTicket",
-            "click .notes"      : "addNote",
-            "click .elevate"    : "elevate",
-        },
-        initialize: function(){
-            console.log('initializing TicketView...');
-            var self = this;
-
-            self.el = $('#supportTickets');
-            self.delegateEvents();
-            self.tickets.bind('add', self.addOne, self);
-            self.tickets.bind('reset', self.addAll, self);
-            self.tickets.bind('all', self.render, self);
-
-            self.tickets.fetch();
-        },
-        render: function(){
-            console.log('rendering TicketView...');
-            var self = this;
-            var data = {
-                total: self.tickets.length,
-                closed: self.tickets.closed().length,
-                open: self.tickets.open().length,
-            };
-        },
-        closeTicket: function(){
-        },
-        addNote: function(){
-        },
-        elevate: function(){
-        },
-    });*/
 
     $(document).ready(function(){
-        manageTickets = new HelpDesk({el: $('#supportTickets')});
+        manageTickets = new HelpDesk({el: $('table')});
     });
 </script>
 {% endblock %}
@@ -140,11 +153,13 @@
 {% endblock %}
 
 {% block content %}
-<div id="supportTickets">
+<div class="row" id="ticketExpand"></div>
+
+<div class="row" id="ticketList">
     <table class="table table-striped table-condensed">
-        <thead id="tableHeader">
+        <thead>
         </thead>
-        <tbody id="tableBody">
+        <tbody>
         </tbody>
     </table>
 </div>

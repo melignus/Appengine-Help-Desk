@@ -22,6 +22,7 @@ try:
     run_on_google = True
 except:
     run_on_google = False
+# End Google App Engine Block
 
 sites = [
         'DIST',
@@ -38,6 +39,22 @@ sites = [
         'Food Services',
         'Transportation',
         ]
+
+nettechs = {
+        'DIST': 'ishelp@hbuhsd.edu',
+        'WHS': 'dhidalgo@hbuhsd.edu',
+        'EHS': 'ptabony@hbuhsd.edu',
+        'FVHS': 'iprotsenko@hbuhsd.edu',
+        'MHS': 'rpowell@hbuhsd.edu',
+        'OVHS': 'dtran@hbuhsd.edu',
+        'HBHS': 'along@hbuhsd.edu',
+        'VVHS': 'ishelp@hbuhsd.edu',
+        'HBAS': 'wlacap@hbuhsd.edu',
+        'CDS': 'wlacap@hbuhsd.edu',
+        'CHS': 'wlacap@hbuhsd.edu',
+        'Food Services': 'ishelp@hbuhsd.edu',
+        'Transportation': 'ishelp@hbuhsd.edu',
+        }
 
 app = Flask(__name__)
 
@@ -58,21 +75,22 @@ class Support_Ticket(db.Model):
 
     assigned_to = db.UserProperty()
     description = db.StringProperty()
+    elevated = db.BooleanProperty()
 
-#    def __init__(self, ticket_type, user_type, site, macro, micro, submitted_by):
-#        self.ticket_type = ticket_type
-#        self.user_type = user_type
-#        self.site = site
-#        self.macro = macro
-#        self.micro = micro
-#        self.submitted_by = submitted_by
-#        self.submitted_on = datetime.datetime.now()
+class Message(db.Model):
+    for_ticket = db.ReferenceProperty(Support_Ticket)
+    message = db.StringProperty(multiline=True)
+
+    submitted_on = db.DateTimeProperty(auto_now_add=True)
+    submitted_by = db.UserProperty()
 
 @app.route('/')
 def home():
     if run_on_google:
         logging.info(users.get_current_user())
-        this_user = str(users.get_current_user())+'@hbuhsd.edu'
+        this_user = str(users.get_current_user())
+        if not re.match('.*@.*', this_user):
+            this_user += '@hbuhsd.edu'
     else:
         this_user = 'test@hbuhsd.edu'
 
@@ -99,6 +117,8 @@ def new_ticket():
                 micro=these_params['ticketMicroLocation'],
                 description=these_params['ticketDescription'],
                 submitted_by=users.get_current_user(),
+                assigned_to=nettechs[these_params['ticketSite']],
+                elevated=False,
                 )
         this_ticket.put()
         return jsonify({'message': 'OK'})
@@ -115,14 +135,24 @@ def ticket(ticket_id):
     if request.method == 'GET':
         this_query = Support_Ticket.get_by_id(int(ticket_id))
         this_ticket = {
-                'ticketType': this_query.ticket_type,
-                'ticketUserType': this_query.user_type,
-                'ticketMacroLocation': this_query.macro,
-                'ticketSubmittedOn': str(this_query.submitted_on),
-                'ticketSubmittedBy': str(this_query.submitted_by),
-                'id': str(this_query.key().id()),
+                'ticketType': ticket.ticket_type,
+                'ticketUserType': ticket.user_type,
+                'ticketSite': ticket.site,
+                'ticketMacroLocation': ticket.macro,
+                'ticketMicroLocation': ticket.micro,
+                'ticketSubmittedOn': str(ticket.submitted_on)[:16],
+                'ticketSubmittedBy': str(ticket.submitted_by),
+                'ticketCompletedOn': str(ticket.completed_on)[:16],
+                'ticketCompletedBy': str(ticket.completed_by),
+                'ticketAssignedTo' : str(ticket.assigned_to),
+                'ticketDescription' : ticket.description,
+                'ticketNotes': [['Notes1'], ['Notes2']],
+                'ticketElevated': ticket.elevated,
+                'id': str(ticket.key().id()),
                 }
         return Response(response=json.dumps(this_ticket), mimetype="application/json")
+    if request.method == 'PUT':
+        return jsonify({'message': 'OK'})
     else:
         return jsonify({'message': 'ERROR'})
 
@@ -134,15 +164,22 @@ def tickets():
             {
                 'ticketType': ticket.ticket_type,
                 'ticketUserType': ticket.user_type,
+                'ticketSite': ticket.site,
                 'ticketMacroLocation': ticket.macro,
-                'ticketSubmittedOn': str(ticket.submitted_on),
+                'ticketMicroLocation': ticket.micro,
+                'ticketSubmittedOn': str(ticket.submitted_on)[:16],
                 'ticketSubmittedBy': str(ticket.submitted_by),
+                'ticketCompletedOn': str(ticket.completed_on)[:16],
+                'ticketCompletedBy': str(ticket.completed_by),
+                'ticketAssignedTo' : str(ticket.assigned_to),
+                'ticketDescription' : ticket.description,
+                'ticketNotes': [['Notes1'], ['Notes2']],
+                'ticketElevated': ticket.elevated,
                 'id': str(ticket.key().id()),
             } for ticket in this_query]
 
     logging.info(these_tickets)
     return Response(response=json.dumps(these_tickets), mimetype="application/json")
-    #return jsonify(these_tickets)#{'message': 'OK'})
 
 @app.route('/test', methods=['POST', 'GET', 'PUT', 'DELETE'])
 def test():

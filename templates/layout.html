@@ -20,16 +20,16 @@
         {% endblock %}
     </head>
     <body>
-        <div class="container">
-            <div class="navbar navbar-fixed-top">
-                <div class="navbar-inner">
-                    <a class="brand" href="#">HBUHSD Help Desk - {% block brand %}{% endblock %}</a>
-                    <ul class="nav">
-                        <li class="divider-vertical"></li>
-                        {% block menu %}{% endblock %}
-                    </ul>
-                </div>
+        <div class="navbar navbar-fixed-top">
+            <div class="navbar-inner">
+                <a class="brand" href="#">HBUHSD Help Desk - {% block brand %}{% endblock %}</a>
+                <ul class="nav">
+                    <li class="divider-vertical"></li>
+                    {% block menu %}{% endblock %}
+                </ul>
             </div>
+        </div>
+        <div class="container">
             <div class="row" style="margin-top:40px;">
                 <div class="span10 offset1">
                     <div class="row">{% block top %}{% endblock %}</div>

@@ -6,13 +6,14 @@
 <script>
     function clearForm(form){
         form[0].reset();
-        $('.help-inline', form).hide();
+        $('.alternate', form).hide();
         $('.control-group', form).each(function(){
             $(this).removeClass('error');
         });
     };
 
     $(document).ready(function(){
+        $()
         $('.alternate').each(function() {
             $(this).hide();
         });
@@ -105,13 +106,13 @@
             <label class="control-label" for="ticketType"><strong>Equipment Type:</strong></label>
             <div class="controls" id="ticketType">
                 <label class="radio inline">
-                    <input type="radio" checked="true" value="computer" name="ticketType">Computer
+                    <input type="radio" value="computer" name="ticketType">Computer
                 </label>
                 <label class="radio inline">
-                    <input type="radio" checked="" value="printer" name="ticketType">Printer
+                    <input type="radio" value="printer" name="ticketType">Printer
                 </label>
                 <label class=" radio inline">
-                    <input type="radio" checked="" value="Other" name="ticketType">Other
+                    <input type="radio" value="Other" name="ticketType">Other
                 </label>
                 <div class="alternate">
                     <input class="input" name="ticketType" id="altTicketType">
@@ -122,16 +123,16 @@
             <label class="control-label" for="ticketUserType"><strong>User Type:</strong></label>
             <div class="controls" id="ticketUserType">
                 <label class="radio inline">
-                    <input type="radio" checked="true" value="staff" name="ticketUserType">Staff
+                    <input type="radio" value="staff" name="ticketUserType">Staff
                 </label>
                 <label class="radio inline">
-                    <input type="radio" checked="" value="teacher" name="ticketUserType">Teacher
+                    <input type="radio" value="teacher" name="ticketUserType">Teacher
                 </label>
                 <label class="radio inline">
-                    <input type="radio" checked="" value="student" name="ticketUserType">Student
+                    <input type="radio" value="student" name="ticketUserType">Student
                 </label>
                 <label class="radio inline">
-                    <input type="radio" checked="" value="Other" name="ticketUserType">Other
+                    <input type="radio" value="Other" name="ticketUserType">Other
                 </label>
                 <div class="alternate">
                     <input class="input" name="ticketUserType" id="altTicketUserType">

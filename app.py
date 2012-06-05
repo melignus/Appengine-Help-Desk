@@ -73,7 +73,7 @@ class Support_Ticket(db.Model):
     completed_on = db.DateTimeProperty()
     completed_by = db.UserProperty()
 
-    assigned_to = db.UserProperty()
+    assigned_to = db.StringProperty()
     description = db.StringProperty()
     elevated = db.BooleanProperty()
 

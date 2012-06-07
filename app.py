@@ -77,6 +77,8 @@ class Support_Ticket(db.Model):
     description = db.StringProperty()
     elevated = db.BooleanProperty()
 
+    starred = db.BooleanProperty()
+
 class Message(db.Model):
     for_ticket = db.ReferenceProperty(Support_Ticket)
     message = db.StringProperty(multiline=True)
@@ -96,7 +98,12 @@ def home():
 
     page_params['title'] = 'Ticket Manager'
     page_params['message'] = 'tickets displayed are for user %s' % this_user
-    return render_template('home.html', page_params=page_params)
+    page_params['debug'] = {
+            'ticketList': 'style="background-color: blue;"',
+            'singleTicket': 'style="background-color: red;"',
+            'ticketNotes': 'style="background-color: green;"',
+            }
+    return render_template('manage_tickets.html', page_params=page_params)
 
 @app.route('/new_ticket', methods=['POST', 'GET', 'PUT', 'DELETE'])
 def new_ticket():
@@ -109,6 +116,12 @@ def new_ticket():
     if request.method == 'POST':
         logging.info(request.form)
         these_params = request.form
+
+        if these_params['ticketSite'] in nettechs:
+            set_assignment = nettechs[these_params['ticketSite']]
+        else:
+            set_assignment = nettechs['DIST']
+
         this_ticket = Support_Ticket(
                 ticket_type=these_params['ticketType'],
                 user_type=these_params['ticketUserType'],
@@ -117,8 +130,9 @@ def new_ticket():
                 micro=these_params['ticketMicroLocation'],
                 description=these_params['ticketDescription'],
                 submitted_by=users.get_current_user(),
-                assigned_to=nettechs[these_params['ticketSite']],
+                assigned_to=set_assignment,
                 elevated=False,
+                starred=False,
                 )
         this_ticket.put()
         return jsonify({'message': 'OK'})
@@ -128,6 +142,7 @@ def new_ticket():
     page_params['message'] = 'please fill all fields to submit a new support ticket'
     return render_template('new_ticket.html', page_params=page_params)
 
+# POST = create # PUT = update # GET = retrieve # DELETE = delete # Backbone.js
 @app.route('/ticket/<ticket_id>', methods=['POST', 'GET', 'PUT', 'DELETE'])
 def ticket(ticket_id):
     logging.info('method: %s' % request.method)
@@ -148,10 +163,15 @@ def ticket(ticket_id):
                 'ticketDescription' : ticket.description,
                 'ticketNotes': [['Notes1'], ['Notes2']],
                 'ticketElevated': ticket.elevated,
+                'ticketStarred': ticket.starred,
                 'id': str(ticket.key().id()),
                 }
         return Response(response=json.dumps(this_ticket), mimetype="application/json")
-    if request.method == 'PUT':
+    elif request.method == 'PUT':
+        if u'toggleTicket' in request.json:
+            this_query = Support_Ticket.get_by_id(int(ticket_id))
+            this_query.starred = request.json[u'ticketStarred']
+            this_query.put()
         return jsonify({'message': 'OK'})
     else:
         return jsonify({'message': 'ERROR'})
@@ -175,6 +195,7 @@ def tickets():
                 'ticketDescription' : ticket.description,
                 'ticketNotes': [['Notes1'], ['Notes2']],
                 'ticketElevated': ticket.elevated,
+                'ticketStarred': ticket.starred,
                 'id': str(ticket.key().id()),
             } for ticket in this_query]
 

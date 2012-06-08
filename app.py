@@ -79,9 +79,10 @@ class Support_Ticket(db.Model):
 
     starred = db.BooleanProperty()
 
-class Message(db.Model):
-    for_ticket = db.ReferenceProperty(Support_Ticket)
-    message = db.StringProperty(multiline=True)
+class Note(db.Model):
+    for_ticket = db.ReferenceProperty(Support_Ticket, 
+            collection_name='notes')
+    message = db.StringProperty()
 
     submitted_on = db.DateTimeProperty(auto_now_add=True)
     submitted_by = db.UserProperty()
@@ -161,18 +162,29 @@ def ticket(ticket_id):
                 'ticketCompletedBy': str(ticket.completed_by),
                 'ticketAssignedTo' : str(ticket.assigned_to),
                 'ticketDescription' : ticket.description,
-                'ticketNotes': [['Notes1'], ['Notes2']],
                 'ticketElevated': ticket.elevated,
                 'ticketStarred': ticket.starred,
                 'id': str(ticket.key().id()),
                 }
+        these_notes = [{
+            'noteId': str(note.key().id()),
+            'noteMessage': note.message,
+            'noteSubmittedBy': str(note.submitted_by),
+            'noteSubmittedOn': str(note.submitted_on)[:16],
+            } for note in this_query.notes]
+        this_ticket['ticketNotes'] = these_notes
         return Response(response=json.dumps(this_ticket), mimetype="application/json")
     elif request.method == 'PUT':
-        if u'toggleTicket' in request.json:
-            this_query = Support_Ticket.get_by_id(int(ticket_id))
-            this_query.starred = request.json[u'ticketStarred']
-            this_query.put()
-        return jsonify({'message': 'OK'})
+        these_params = request.json
+        this_query = Support_Ticket.get_by_id(int(ticket_id))
+        this_query.starred = these_params[u'ticketStarred']
+        this_query.put()
+        logging.info(these_params[u'ticketNotes'])
+        #if u'toggleTicket' in request.json:
+        #    this_query = Support_Ticket.get_by_id(int(ticket_id))
+        #    this_query.starred = request.json[u'ticketStarred']
+        #    this_query.put()
+        return jsonify({'message': 'Ok'})
     else:
         return jsonify({'message': 'ERROR'})
 
@@ -193,7 +205,12 @@ def tickets():
                 'ticketCompletedBy': str(ticket.completed_by),
                 'ticketAssignedTo' : str(ticket.assigned_to),
                 'ticketDescription' : ticket.description,
-                'ticketNotes': [['Notes1'], ['Notes2']],
+                'ticketNotes': [{
+                    'noteId': str(note.key().id()),
+                    'noteMessage': note.message,
+                    'noteSubmittedBy': str(note.submitted_by),
+                    'noteSubmittedOn': str(note.submitted_on)[:16],
+                    } for note in ticket.notes],
                 'ticketElevated': ticket.elevated,
                 'ticketStarred': ticket.starred,
                 'id': str(ticket.key().id()),

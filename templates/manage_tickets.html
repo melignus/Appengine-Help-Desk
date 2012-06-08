@@ -29,11 +29,22 @@
         </script>
 
         <script id="singleTicketTemplate" type="text/x-handlebars-template">
-            <h3>Ticket#: {{ticket.id}}</h3>
-            <ul>
-                <li>Submitted By: {{ticket.ticketSubmittedBy}}</li>
-                <li>Submitted On: {{ticket.ticketSubmittedOn}}</li>
-            </ul>
+            <div class="span4">
+                <h3>Ticket#: {{ticket.id}}</h3>
+                <ul>
+                    <li>Submitted By: {{ticket.ticketSubmittedBy}}</li>
+                    <li>Submitted On: {{ticket.ticketSubmittedOn}}</li>
+                </ul>
+            </div>
+            <div class="span3">
+                <h3>Notes:</h3>
+                <ul id="ticketNotes">
+                    {{#each ticket.ticketNotes}}
+                    <li>{{this}}</li>
+                    {{/each}}
+                    <li id="addNote"><h6>Add Note...</h6></li>
+                </ul>
+            </div>
         </script>
         {% endraw%}
 
@@ -52,15 +63,22 @@
                 toggleStar: function(){
                     var self = this;
                     self.save({
-                        toggleTicket: true,
                         ticketStarred: !self.get("ticketStarred"),
-                    })
+                    });
+                },
+                addNote: function(note){
+                    var self = this;
+                    self.save({
+                        ticketNotes: self.get("ticketNotes").push(note),
+                    });
                 },
             });
 
             var Tickets = Backbone.Collection.extend({
                 model: Ticket,
                 url: '/tickets',
+                initialize: function(){
+                },
                 closed: function(){
                     return true;
                 },
@@ -69,14 +87,15 @@
                 },
             });
 
+            //Single ticket view in window
             var SingleTicket = Backbone.View.extend({
                 events: {
-                    "dblclick .addNote": "addNote",
+                    "dblclick #addNote": "getNote",
+                    "keypress #newNote": "addNote",
                 },
                 initialize: function(){
                     var self = this;
                     self.model.bind('change', self.render, self);
-                    self.notesRendered = self.renderNotes();
                 },
                 render: function(){
                     var self = this;
@@ -90,20 +109,21 @@
                     $(self.el).html(source);
                     return self
                 },
-                addNote: function(){
+                getNote: function(){
                     console.log('addNote...');
-                },
-                renderNotes: function(){
-                    console.log('renderNotes...');
                     var self = this;
-                    var thisTicket = self.model.attributes;
-                    var theseMessages = thisTicket.ticketNotes;
-                    var thisHTML = "";
-                    for (var i=0;i<=theseMessages.length-1;i++){
-                        thisHTML+="<p>"+theseMessages[i]+"</p>";
-                    };
-        
-                    return thisHTML;
+                    $('#addNote', self.el).remove();
+                    $('#ticketNotes', self.el).append('<li id="newNoteList"><input id="newNote" type="text" class="input" /></li>');
+                },
+                addNote: function(e){
+                    var self = this;
+                    var note = $('#newNote', self.el).val();
+                    if(!note || e.keyCode !== 13){
+                        return;
+                    }
+                    self.model.addNote(note);
+                    $('#newNoteList', self.el).remove();
+                    $('#ticketNotes', self.el).append('<li id="addNote"><h6>Add Note...</h6></li>');
                 },
             });
 
@@ -218,8 +238,7 @@
                 Title
             </div>
             <div class="row">
-                <div id="layoutSingleTicket" class="span5">Single Ticket</div>
-                <div id="layoutTicketNotes" class="span3">Notes</div>
+                <div id="layoutSingleTicket" class="span8">Single Ticket</div>
                 <div id="layoutTicketList" class="span4">
                     <span><h3>Tickets</h3></span>
                     <ul class="nav nav-pills nav-stacked"></ul>

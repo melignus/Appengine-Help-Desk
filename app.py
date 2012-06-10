@@ -178,12 +178,17 @@ def ticket(ticket_id):
         these_params = request.json
         this_query = Support_Ticket.get_by_id(int(ticket_id))
         this_query.starred = these_params[u'ticketStarred']
+        saved_notes = [saved_note.message for saved_note in this_query.notes]
+        logging.info(saved_notes)
+        logging.info(these_params[u'ticketNotes'])
+        for note in these_params[u'ticketNotes']:
+            if str(note[u'noteMessage']) not in saved_notes:
+                logging.info('saveing note...')
+                Note(for_ticket=this_query,
+                        message=str(note[u'noteMessage']),
+                        submitted_by=users.get_current_user()).put()
         this_query.put()
         logging.info(these_params[u'ticketNotes'])
-        #if u'toggleTicket' in request.json:
-        #    this_query = Support_Ticket.get_by_id(int(ticket_id))
-        #    this_query.starred = request.json[u'ticketStarred']
-        #    this_query.put()
         return jsonify({'message': 'Ok'})
     else:
         return jsonify({'message': 'ERROR'})

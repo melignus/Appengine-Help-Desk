@@ -15,10 +15,13 @@
         <link rel="stylesheet" href="/static/css/bootstrap-responsive.min.css" />
         <link rel="stylesheet" href="/static/css/jquery-ui-1.8.20.custom.css" />
 
+        <link rel="stylesheet" href="/static/css/Support_Ticket.css" />
+
         {% raw %}
         <script id="ticketListTemplate" type="text/x-handlebars-template">
             <a href="#">
-                <strong>{{ticket.ticketType}}</strong>
+                <strong>#{{ticket.id}}</strong>
+                {{ticket.ticketType}}
                 {{ticket.ticketSubmittedBy}}
                 {{ticket.ticketSubmittedOn}}
                 <i class="{{icon}} pull-right favMe"></i>
@@ -29,20 +32,20 @@
         </script>
 
         <script id="singleTicketTemplate" type="text/x-handlebars-template">
+            <div class="span3">
+                <h3>Notes:</h3>
+                <ul id="ticketNotes" style="list-style: none;">
+                    {{#each ticket.ticketNotes}}
+                    <li class=""><i class="icon-remove removeMe" id="note{{this.noteId}}"></i>{{this.noteMessage}}</li>
+                    {{/each}}
+                    <li id="addNote"><h6>Add Note...</h6></li>
+                </ul>
+            </div>
             <div class="span4">
                 <h3>Ticket#: {{ticket.id}}</h3>
                 <ul>
                     <li>Submitted By: {{ticket.ticketSubmittedBy}}</li>
                     <li>Submitted On: {{ticket.ticketSubmittedOn}}</li>
-                </ul>
-            </div>
-            <div class="span3">
-                <h3>Notes:</h3>
-                <ul id="ticketNotes">
-                    {{#each ticket.ticketNotes}}
-                    <li>{{this}}</li>
-                    {{/each}}
-                    <li id="addNote"><h6>Add Note...</h6></li>
                 </ul>
             </div>
         </script>
@@ -68,9 +71,23 @@
                 },
                 addNote: function(note){
                     var self = this;
-                    self.save({
-                        ticketNotes: self.get("ticketNotes").push(note),
-                    });
+                    var theseNotes = self.get("ticketNotes");
+                    if (theseNotes.length == 0){
+                        theseNotes.push({noteMessage: note});
+                    } else {
+                        for (var i=0;i<=theseNotes.length;i++){
+                            if (theseNotes[i].noteMessage == note){
+                                break;
+                            } else {
+                                theseNotes.push({noteMessage: note});
+                                break;
+                            };
+                        };
+                    };
+                    self.save();
+                },
+                removeNote: function(note){
+                    console.log(note);
                 },
             });
 
@@ -92,6 +109,7 @@
                 events: {
                     "dblclick #addNote": "getNote",
                     "keypress #newNote": "addNote",
+                    "dblclick .removeMe": "removeNote",
                 },
                 initialize: function(){
                     var self = this;
@@ -107,6 +125,7 @@
                     }
                     var source = template(context);
                     $(self.el).html(source);
+                    self.delegateEvents();
                     return self
                 },
                 getNote: function(){
@@ -114,6 +133,7 @@
                     var self = this;
                     $('#addNote', self.el).remove();
                     $('#ticketNotes', self.el).append('<li id="newNoteList"><input id="newNote" type="text" class="input" /></li>');
+                    $('#newNote').focus();
                 },
                 addNote: function(e){
                     var self = this;
@@ -122,8 +142,12 @@
                         return;
                     }
                     self.model.addNote(note);
-                    $('#newNoteList', self.el).remove();
-                    $('#ticketNotes', self.el).append('<li id="addNote"><h6>Add Note...</h6></li>');
+                    self.render();
+                },
+                removeNote: function(e){
+                    var self = this;
+                    var thisNote = e.srcElement.id;
+                    self.model.removeNote(thisNote);
                 },
             });
 
@@ -137,7 +161,8 @@
                     "click .favMe": "toggleStar",
                 },
                 initialize: function(){
-                    this.model.bind('change', this.render, this);
+                    var self = this;
+                    self.model.bind('change', self.render, self);
                 },
                 render: function(){
                     var self = this;

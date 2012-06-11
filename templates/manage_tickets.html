@@ -36,7 +36,7 @@
                 <h3>Notes:</h3>
                 <ul id="ticketNotes" style="list-style: none;">
                     {{#each ticket.ticketNotes}}
-                    <li class=""><i class="icon-remove removeMe" id="note{{this.noteId}}"></i>{{this.noteMessage}}</li>
+                    <li class=""><i class="icon-remove removeMe" note-id="{{this.noteId}}"></i>{{this.noteMessage}}</li>
                     {{/each}}
                     <li id="addNote"><h6>Add Note...</h6></li>
                 </ul>
@@ -75,7 +75,7 @@
                     if (theseNotes.length == 0){
                         theseNotes.push({noteMessage: note});
                     } else {
-                        for (var i=0;i<=theseNotes.length;i++){
+                        for (var i=0;i<=theseNotes.length-1;i++){
                             if (theseNotes[i].noteMessage == note){
                                 break;
                             } else {
@@ -87,7 +87,14 @@
                     self.save();
                 },
                 removeNote: function(note){
-                    console.log(note);
+                    var self = this;
+                    var theseNotes = self.get("ticketNotes");
+                    for (var i=0;i<=theseNotes.length-1;i++){
+                        if (theseNotes[i].noteId == note){
+                            theseNotes.pop(i);
+                        }
+                    }
+                    self.save();
                 },
             });
 
@@ -146,8 +153,9 @@
                 },
                 removeNote: function(e){
                     var self = this;
-                    var thisNote = e.srcElement.id;
+                    var thisNote = $(e.srcElement).attr('note-id');
                     self.model.removeNote(thisNote);
+                    self.render();
                 },
             });
 

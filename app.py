@@ -87,6 +87,32 @@ class Note(db.Model):
     submitted_on = db.DateTimeProperty(auto_now_add=True)
     submitted_by = db.UserProperty()
 
+def ticket_to_json(ticket):
+    this_ticket = {
+            'ticketType': ticket.ticket_type,
+            'ticketUserType': ticket.user_type,
+            'ticketSite': ticket.site,
+            'ticketMacroLocation': ticket.macro,
+            'ticketMicroLocation': ticket.micro,
+            'ticketSubmittedOn': str(ticket.submitted_on)[:16],
+            'ticketSubmittedBy': str(ticket.submitted_by),
+            'ticketCompletedOn': str(ticket.completed_on)[:16],
+            'ticketCompletedBy': str(ticket.completed_by),
+            'ticketAssignedTo' : str(ticket.assigned_to),
+            'ticketDescription' : ticket.description,
+            'ticketElevated': ticket.elevated,
+            'ticketStarred': ticket.starred,
+            'id': str(ticket.key().id()),
+            }
+    these_notes = [{
+        'noteId': str(note.key().id()),
+        'noteMessage': note.message,
+        'noteSubmittedBy': str(note.submitted_by),
+        'noteSubmittedOn': str(note.submitted_on)[:16],
+        } for note in this_query.notes]
+    this_ticket['ticketNotes'] = these_notes
+    return this_ticket
+
 @app.route('/')
 def home():
     if run_on_google:
@@ -150,46 +176,28 @@ def ticket(ticket_id):
     logging.info('ticket_id: %s' % ticket_id)
     if request.method == 'GET':
         this_query = Support_Ticket.get_by_id(int(ticket_id))
-        this_ticket = {
-                'ticketType': ticket.ticket_type,
-                'ticketUserType': ticket.user_type,
-                'ticketSite': ticket.site,
-                'ticketMacroLocation': ticket.macro,
-                'ticketMicroLocation': ticket.micro,
-                'ticketSubmittedOn': str(ticket.submitted_on)[:16],
-                'ticketSubmittedBy': str(ticket.submitted_by),
-                'ticketCompletedOn': str(ticket.completed_on)[:16],
-                'ticketCompletedBy': str(ticket.completed_by),
-                'ticketAssignedTo' : str(ticket.assigned_to),
-                'ticketDescription' : ticket.description,
-                'ticketElevated': ticket.elevated,
-                'ticketStarred': ticket.starred,
-                'id': str(ticket.key().id()),
-                }
-        these_notes = [{
-            'noteId': str(note.key().id()),
-            'noteMessage': note.message,
-            'noteSubmittedBy': str(note.submitted_by),
-            'noteSubmittedOn': str(note.submitted_on)[:16],
-            } for note in this_query.notes]
-        this_ticket['ticketNotes'] = these_notes
-        return Response(response=json.dumps(this_ticket), mimetype="application/json")
+        return Response(response=json.dumps(ticket_to_json(this_query)), mimetype="application/json")
+
     elif request.method == 'PUT':
         these_params = request.json
         this_query = Support_Ticket.get_by_id(int(ticket_id))
-        this_query.starred = these_params[u'ticketStarred']
-        saved_notes = [saved_note.message for saved_note in this_query.notes]
-        logging.info(saved_notes)
-        logging.info(these_params[u'ticketNotes'])
-        for note in these_params[u'ticketNotes']:
-            if str(note[u'noteMessage']) not in saved_notes:
-                logging.info('saveing note...')
-                Note(for_ticket=this_query,
-                        message=str(note[u'noteMessage']),
-                        submitted_by=users.get_current_user()).put()
+        saved_notes = set([int(note.key().id()) for note in this_query.notes])
+        put_notes = set([int(note['noteId']) for note in these_params['ticketNotes'] if 'noteId' in note])
+        new_notes = [str(note['noteMessage']) for note in these_params['ticketNotes'] if 'noteId' not in note]
+        this_query.starred = these_params['ticketStarred']
+
+        for note in new_notes:
+            Note(for_ticket=this_query,
+                    message=note,
+                    submitted_by=users.get_current_user()).put()
+
+        if len(put_notes) < len(saved_notes):
+            for note_to_remove in (saved_notes - put_notes):
+                this_note = Note.get_by_id(int(note_to_remove))
+                this_note.delete()
+
         this_query.put()
-        logging.info(these_params[u'ticketNotes'])
-        return jsonify({'message': 'Ok'})
+        return jsonify({'message': 'OK'})
     else:
         return jsonify({'message': 'ERROR'})
 

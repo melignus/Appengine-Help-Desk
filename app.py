@@ -78,6 +78,7 @@ class Support_Ticket(db.Model):
     elevated = db.BooleanProperty()
 
     starred = db.BooleanProperty()
+    meta = db.StringListProperty()
 
 class Note(db.Model):
     for_ticket = db.ReferenceProperty(Support_Ticket, 
@@ -102,6 +103,7 @@ def ticket_to_json(ticket):
             'ticketDescription' : ticket.description,
             'ticketElevated': ticket.elevated,
             'ticketStarred': ticket.starred,
+            'ticketMeta': ticket.meta,
             'id': str(ticket.key().id()),
             }
     these_notes = [{
@@ -109,7 +111,7 @@ def ticket_to_json(ticket):
         'noteMessage': note.message,
         'noteSubmittedBy': str(note.submitted_by),
         'noteSubmittedOn': str(note.submitted_on)[:16],
-        } for note in this_query.notes]
+        } for note in ticket.notes]
     this_ticket['ticketNotes'] = these_notes
     return this_ticket
 
@@ -197,39 +199,17 @@ def ticket(ticket_id):
                 this_note.delete()
 
         this_query.put()
-        return jsonify({'message': 'OK'})
+        return Response(response=json.dumps(ticket_to_json(Support_Ticket.get_by_id(int(ticket_id)))), mimetype="application/json")
     else:
         return jsonify({'message': 'ERROR'})
 
 @app.route('/tickets', methods=['GET'])
 def tickets():
-    logging.info('request: %s' % request)
+    this_user = users.get_current_user()
     this_query = Support_Ticket.gql("WHERE submitted_by = :submitted_by", submitted_by=users.get_current_user())
-    these_tickets = [
-            {
-                'ticketType': ticket.ticket_type,
-                'ticketUserType': ticket.user_type,
-                'ticketSite': ticket.site,
-                'ticketMacroLocation': ticket.macro,
-                'ticketMicroLocation': ticket.micro,
-                'ticketSubmittedOn': str(ticket.submitted_on)[:16],
-                'ticketSubmittedBy': str(ticket.submitted_by),
-                'ticketCompletedOn': str(ticket.completed_on)[:16],
-                'ticketCompletedBy': str(ticket.completed_by),
-                'ticketAssignedTo' : str(ticket.assigned_to),
-                'ticketDescription' : ticket.description,
-                'ticketNotes': [{
-                    'noteId': str(note.key().id()),
-                    'noteMessage': note.message,
-                    'noteSubmittedBy': str(note.submitted_by),
-                    'noteSubmittedOn': str(note.submitted_on)[:16],
-                    } for note in ticket.notes],
-                'ticketElevated': ticket.elevated,
-                'ticketStarred': ticket.starred,
-                'id': str(ticket.key().id()),
-            } for ticket in this_query]
+    these_tickets = [ticket_to_json(ticket) for ticket in this_query]
 
-    logging.info(these_tickets)
+    logging.info('this_user: %s requesting_tickets: %s' % (this_user, these_tickets))
     return Response(response=json.dumps(these_tickets), mimetype="application/json")
 
 @app.route('/test', methods=['POST', 'GET', 'PUT', 'DELETE'])

@@ -6,6 +6,7 @@
         <script type="text/javascript" src="/static/js/jquery-ui-1.8.20.custom.min.js"></script>
         <script type="text/javascript" src="/static/js/bootstrap.min.js"></script>
         <script type="text/javascript" src="/static/js/bootstrap-modal.js"></script>
+        <script type="text/javascript" src="/static/js/bootstrap-tooltip.js"></script>
         <script type="text/javascript" src="/static/js/underscore-min.js"></script>
         <script type="text/javascript" src="/static/js/backbone-min.js"></script>
         <script type="text/javascript" src="/static/js/handlebars.js"></script>
@@ -36,17 +37,22 @@
                 <h3>Notes:</h3>
                 <ul id="ticketNotes" style="list-style: none;">
                     {{#each ticket.ticketNotes}}
-                    <li class=""><i class="icon-remove removeMe" note-id="{{this.noteId}}"></i>{{this.noteMessage}}</li>
+                    <li class="ticketNote" rel="tooltip" title="{{this.noteSubmittedBy}}"><i class="icon-remove removeMe" note-id="{{this.noteId}}" style="margin-right:5px;"></i>{{this.noteMessage}}</li>
                     {{/each}}
                     <li id="addNote"><h6>Add Note...</h6></li>
                 </ul>
             </div>
             <div class="span4">
-                <h3>Ticket#: {{ticket.id}}</h3>
-                <ul>
-                    <li>Submitted By: {{ticket.ticketSubmittedBy}}</li>
-                    <li>Submitted On: {{ticket.ticketSubmittedOn}}</li>
-                </ul>
+                <h3>Ticket: {{ticket.id}} For: {{ticket.ticketSubmittedBy}}</h3>
+                <div class="well">
+                <p><strong>Submitted On:</strong> {{ticket.ticketSubmittedOn}}</p>
+                <p><strong>User:</strong> {{ticket.ticketUserType}}</p>
+                <p><strong>Equipment:</strong> {{ticket.ticketType}}</p>
+                <p><strong>Room/Building:</strong> {{ticket.ticketMacroLocation}}</p>
+                <p><strong>In Room:</strong> {{ticket.ticketMicroLocation}}</p>
+                <p><strong>Completed On:</strong> {{ticket.ticketCompletedOn}}</p>
+                <p><strong>Description:</strong> {{ticket.ticketDescription}}</p>
+            </div>
             </div>
         </script>
         {% endraw%}
@@ -109,6 +115,9 @@
                 open: function(){
                     return true;
                 },
+                comparator: function(ticket){
+                    return -ticket.get("ticketStarred");
+                },
             });
 
             //Single ticket view in window
@@ -136,7 +145,6 @@
                     return self
                 },
                 getNote: function(){
-                    console.log('addNote...');
                     var self = this;
                     $('#addNote', self.el).remove();
                     $('#ticketNotes', self.el).append('<li id="newNoteList"><input id="newNote" type="text" class="input" /></li>');
@@ -179,7 +187,6 @@
                     if (thisTicket.ticketStarred){
                         starred = 'icon-star';
                     }
-                    console.log(thisTicket);
                     var source = $('#ticketListTemplate').html();
                     var template = Handlebars.compile(source);
                     var context = {
@@ -192,7 +199,6 @@
                 },
                 contextMenu: function(e){
                     e.preventDefault();
-                    console.log('contextMenu...');
                 },
                 toggleStar: function(){
                     var self = this;
@@ -200,7 +206,6 @@
                 },
                 expandTicket: function(){
                     var self = this;
-                    console.log('expandTicket...');
                     $('.ticketListItem').each(function(){
                         $(this).removeClass('active');
                     });
@@ -209,9 +214,13 @@
                         model: this.model,
                     });
                     $('#layoutSingleTicket').html(thisTicket.render().el);
+                    $('.ticketNote').each(function(){
+                        $(this).tooltip({
+                            placement: 'left',
+                        });
+                    });
                 },
                 closeTicket: function(){
-                    console.log('closeTicket...');
                 },
             });
 
@@ -220,20 +229,9 @@
                 tickets: new Tickets(),
                 initialize: function(options){
                     var self = this;
-                    self.tableHeader = "<h3>Open Tickets:</h3>";
-                    self.columnHeaders = "<tr>\
-                        <th>SubmittedBy</th>\
-                        <th>Type</th>\
-                        <th>User</th>\
-                        <th>Room</th>\
-                        <th>SubmittedOn</th>\
-                        <th>Close</th>\
-                    </tr>";
                     self.delegateEvents();
         
-                    self.tickets.bind('add', self.addOne, self);
-                    self.tickets.bind('reset', self.addAll, self);
-                    self.tickets.bind('all', self.render, self);
+                    self.tickets.bind('all', self.addAll, self);
         
                     self.tickets.fetch();
                 },
@@ -248,12 +246,16 @@
                     $('#layoutTicketList ul', self.el).append(view.render().el);
                 },
                 addAll: function(){
-                    this.tickets.each(this.addOne);
+                    var self = this;
+                    $('.ticketListItem').each(function(){
+                        $(this).remove();
+                    });
+                    self.tickets.each(self.addOne);
                 },
             });
 
             $(document).ready(function(){
-                manageTickets = new HelpDesk({el: $('table')});
+                manageTickets = new HelpDesk({el: $('#layoutTicketList')});
             });
         </script>
     </head>
@@ -267,11 +269,9 @@
             </div>
         </div>
         <div class="container" style="margin-top:50px;">
-            <div class="row" style="text-align:center;">
-                Title
-            </div>
+            <div id="pageTitleArea" class="row" style="text-align:center;"></div>
             <div class="row">
-                <div id="layoutSingleTicket" class="span8">Single Ticket</div>
+                <div id="layoutSingleTicket" class="span8"><h3>Select a Ticket</h3></div>
                 <div id="layoutTicketList" class="span4">
                     <span><h3>Tickets</h3></span>
                     <ul class="nav nav-pills nav-stacked"></ul>
@@ -281,7 +281,7 @@
                 <div id="layoutFooter">
                     <div class="footer" style="text-align:center;">
                         <hr>
-                        HBUHSD Help Desk via Flask and Twitter Bootstrap on Python/Google App Engine
+                        HBUHSD Help Desk via Flask Backbone.js Handlebars.js Twitter Bootstrap on Python/Google App Engine
                     </div>
                 </div>
             </div>

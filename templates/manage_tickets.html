@@ -10,11 +10,13 @@
         <script type="text/javascript" src="/static/js/underscore-min.js"></script>
         <script type="text/javascript" src="/static/js/backbone-min.js"></script>
         <script type="text/javascript" src="/static/js/handlebars.js"></script>
+        <script type="text/javascript" src="/static/js/chosen.jquery.min.js"></script>
 
         <link rel="shortcut icon" href="/static/favicon.ico" />
         <link rel="stylesheet" href="/static/css/bootstrap.min.css" />
         <link rel="stylesheet" href="/static/css/bootstrap-responsive.min.css" />
         <link rel="stylesheet" href="/static/css/jquery-ui-1.8.20.custom.css" />
+        <link rel="stylesheet" href="/static/css/chosen.css" />
 
         <link rel="stylesheet" href="/static/css/Support_Ticket.css" />
 
@@ -29,35 +31,129 @@
             </a>
         </script>
 
-        <script id="ticketNotesTemplate" type="text/x-handlebars-template">
+        <script id="appHeaderTemplate" type="text/x-handlebars-template">
         </script>
 
         <script id="singleTicketTemplate" type="text/x-handlebars-template">
-            <div class="span3">
-                <h3>Notes:</h3>
-                <ul id="ticketNotes" style="list-style: none;">
-                    {{#each ticket.ticketNotes}}
-                    <li class="ticketNote" rel="tooltip" title="{{this.noteSubmittedBy}}"><i class="icon-remove removeMe" note-id="{{this.noteId}}" style="margin-right:5px;"></i>{{this.noteMessage}}</li>
-                    {{/each}}
-                    <li id="addNote"><h6>Add Note...</h6></li>
-                </ul>
-            </div>
-            <div class="span4">
-                <h3>Ticket: {{ticket.id}} For: {{ticket.ticketSubmittedBy}}</h3>
-                <div class="well">
-                <p><strong>Submitted On:</strong> {{ticket.ticketSubmittedOn}}</p>
-                <p><strong>User:</strong> {{ticket.ticketUserType}}</p>
-                <p><strong>Equipment:</strong> {{ticket.ticketType}}</p>
-                <p><strong>Room/Building:</strong> {{ticket.ticketMacroLocation}}</p>
-                <p><strong>In Room:</strong> {{ticket.ticketMicroLocation}}</p>
-                <p><strong>Completed On:</strong> {{ticket.ticketCompletedOn}}</p>
-                <p><strong>Description:</strong> {{ticket.ticketDescription}}</p>
-            </div>
+            <div class="row">
+                <div class="span3">
+                    <h3>Notes:</h3>
+                    <ul id="ticketNotes" style="list-style: none;">
+                        {{#each ticket.ticketNotes}}
+                        <li class="ticketNote" rel="tooltip" title="{{this.noteSubmittedBy}}"><i class="icon-remove removeMe" note-id="{{this.noteId}}" style="margin-right:5px;"></i>{{this.noteMessage}}</li>
+                        {{/each}}
+                        <li id="addNote"><h6>Add Note...</h6></li>
+                    </ul>
+                </div>
+                <div class="span4">
+                    <h3>Ticket: {{ticket.id}} For: {{ticket.ticketSubmittedBy}}</h3>
+                    <div class="well">
+                    <p><strong>Submitted On:</strong> {{ticket.ticketSubmittedOn}}</p>
+                    <p><strong>User:</strong> {{ticket.ticketUserType}}</p>
+                    <p><strong>Equipment:</strong> {{ticket.ticketType}}</p>
+                    <p><strong>Room/Building:</strong> {{ticket.ticketMacroLocation}}</p>
+                    <p><strong>In Room:</strong> {{ticket.ticketMicroLocation}}</p>
+                    <p><strong>Completed By:</strong> {{ticket.ticketCompletedBy}}</p>
+                    <p><strong>Completed On:</strong> {{ticket.ticketCompletedOn}}</p>
+                    <p><strong>Description:</strong> {{ticket.ticketDescription}}</p>
+                    <hr>
+                    <div style="text-align:center;">
+                        <select data-placeholder="Elevation Metadata" class="chzn-select span3">
+                        {{#each options.elevatedMeta}}
+                            <optgroup label="{{name}}">
+                            {{#types}}
+                                <option>{{this}}</option>
+                            {{/types}}
+                            </optgroup>
+                        {{/each}}
+                        </select>
+                        <button id="elevateMe" style="margin-top:10px;" class="btn{{options.elevatedDisabled}}">{{options.elevatedText}}</button>
+                    </div>
+                </div>
+                <div>
+                    <button id="closeMe" class="btn">Close Ticket</button>
+                </div>
             </div>
         </script>
-        {% endraw%}
+        {% endraw %}
 
         <script>
+            var META_LIST = [
+                {
+                    "name": "Alarm Security",
+                    "types": [
+                    "CCTV Security",
+                    "Fire Alarm",
+                    "Security System",
+                    ]
+                },
+                {
+                    "name": "Audio Visual",
+                    "types": [
+                    "Camera",
+                    "CCTV TV System",
+                    "DVD",
+                    "TV",
+                    "Pro VCR",
+                    ]
+                },
+                {
+                    "name": "Communication",
+                    "types": [
+                    "Networking",
+                    "Network Equipment",
+                    "Telephone Install",
+                    "Telephone Repair",
+                    "Two-Way Radio",
+                    "Voice Mail Repair",
+                    ]
+                },
+                {
+                    "name": "Computer System",
+                    "types": [
+                    "Computer",
+                    "Computer Upgrade",
+                    "IT Install Kit",
+                    "IT Lockdown",
+                    "Monitor",
+                    "PC Install Kit",
+                    "PC Lockdown",
+                    "Printer",
+                    ]
+                },
+                {
+                    "name": "Office Equipment",
+                    "types": [
+                    "Document Reader",
+                    "Time Stamp",
+                    "Typewriter",
+                    ]
+                },
+                {
+                    "name": "Pa/Clock",
+                    "types": [
+                    "Clock",
+                    "Local PA",
+                    "School Main PA",
+                    ]
+                },
+                {
+                    "name": "Projectors",
+                    "types": [
+                    "LCD Projector",
+                    "Overhead Projector",
+                    "Pole Vault",
+                    ]
+                },
+                {
+                    "name": "Other Equipment",
+                    "types": [
+                    "Score Board",
+                    "Theater Dimming System",
+                    ]
+                },
+            ];
+
             var Ticket = Backbone.Model.extend({
                 urlRoot: "/ticket",
                 elevate: function(){
@@ -125,7 +221,10 @@
                 events: {
                     "dblclick #addNote": "getNote",
                     "keypress #newNote": "addNote",
+                    "keypress #elevatedMeta": "syncMeta",
                     "dblclick .removeMe": "removeNote",
+                    "click #closeMe": "closeTicket",
+                    "click #elevateMe": "elevateTicket",
                 },
                 initialize: function(){
                     var self = this;
@@ -136,13 +235,54 @@
                     var thisTicket = self.model.attributes;
                     var source = $('#singleTicketTemplate').html();
                     var template = Handlebars.compile(source);
+                    var options = {
+                        elevatedButton: function(thisTicket){
+                            if(thisTicket.ticketElevated){
+                                return ' disabled';
+                            } else {
+                                return '';
+                            }
+                        },
+                        elevatedText: function(thisTicket){
+                            if(thisTicket.ticketElevated){
+                                return 'Elevated';
+                            } else {
+                                return 'Elevate';
+                            }
+                        },
+                        elevatedMeta: META_LIST,
+                    }
+                    var html = {
+                        elevatedMeta: function(){
+                            for(var i=0;i<=META_LIST.length-1;i++){
+                                console.log(META_LIST[i]);
+                            };
+                        },
+                    }
+
                     var context = {
                         ticket: thisTicket,
+                        options: options,
                     }
                     var source = template(context);
                     $(self.el).html(source);
                     self.delegateEvents();
-                    return self
+                    return self;
+                },
+                syncMeta: function(e){
+                    console.log('syncMeta...');
+                    var self = this;
+                    /*var meta = $('#elevatedMeta', self.el).val();
+                    if(!meta || e.keyCode !== 13){
+                        return;
+                    }*/
+                    self.render();
+                },
+                closeTicket: function(){
+                    console.log('closeTicket...');
+                },
+                elevateTicket: function(){
+                    console.log('elevateTicket...');
                 },
                 getNote: function(){
                     var self = this;
@@ -219,6 +359,7 @@
                             placement: 'left',
                         });
                     });
+                    $('.chzn-select').chosen({allow_single_deselect:true});
                 },
                 closeTicket: function(){
                 },
@@ -269,7 +410,7 @@
             </div>
         </div>
         <div class="container" style="margin-top:50px;">
-            <div id="pageTitleArea" class="row" style="text-align:center;"></div>
+            <div id="layoutAppHeader" class="row"></div>
             <div class="row">
                 <div id="layoutSingleTicket" class="span8"><h3>Select a Ticket</h3></div>
                 <div id="layoutTicketList" class="span4">

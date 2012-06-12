@@ -24,7 +24,7 @@ except:
     run_on_google = False
 # End Google App Engine Block
 
-sites = [
+SITES = [
         'DIST',
         'WHS',
         'EHS',
@@ -40,7 +40,7 @@ sites = [
         'Transportation',
         ]
 
-nettechs = {
+NET_TECHS = {
         'DIST': 'ishelp@hbuhsd.edu',
         'WHS': 'dhidalgo@hbuhsd.edu',
         'EHS': 'ptabony@hbuhsd.edu',
@@ -56,9 +56,36 @@ nettechs = {
         'Transportation': 'ishelp@hbuhsd.edu',
         }
 
+IS_HELP = [
+        'wbeen@hbuhsd.edu',
+        'nbuihner@hbuhsd.edu',
+        'wmiller@hbuhsd.edu',
+        'mford@hbuhsd.edu',
+        'mratanapratum@hbuhsd.edu',
+        'dhoang@hbuhsd.edu',
+        'djohnson@hbuhsd.edu',
+        'greeves@hbuhsd.edu',
+        'mtabata@hbuhsd.edu',
+        ]
+
+ETS = [
+        ]
+
+ELEVATION_META = {
+        }
+
+CLOSE_META = [
+        ]
+
 app = Flask(__name__)
 
 page_params = {}
+
+class Elevated(db.Model):
+    elevated_on = db.DateTimeProperty(auto_now_add=True)
+    elevated_by = db.UserProperty()
+    elevated_because = db.StringProperty()
+    elevated_meta = db.StringListProperty()
 
 class Support_Ticket(db.Model):
     ticket_type = db.StringProperty()
@@ -76,6 +103,7 @@ class Support_Ticket(db.Model):
     assigned_to = db.StringProperty()
     description = db.StringProperty()
     elevated = db.BooleanProperty()
+    elevated_info = db.ReferenceProperty(Elevated)
 
     starred = db.BooleanProperty()
     meta = db.StringListProperty()
@@ -127,11 +155,8 @@ def home():
 
     page_params['title'] = 'Ticket Manager'
     page_params['message'] = 'tickets displayed are for user %s' % this_user
-    page_params['debug'] = {
-            'ticketList': 'style="background-color: blue;"',
-            'singleTicket': 'style="background-color: red;"',
-            'ticketNotes': 'style="background-color: green;"',
-            }
+    page_params['elevation_meta'] = json.dumps(ELEVATION_META)
+
     return render_template('manage_tickets.html', page_params=page_params)
 
 @app.route('/new_ticket', methods=['POST', 'GET', 'PUT', 'DELETE'])
@@ -146,10 +171,10 @@ def new_ticket():
         logging.info(request.form)
         these_params = request.form
 
-        if these_params['ticketSite'] in nettechs:
-            set_assignment = nettechs[these_params['ticketSite']]
+        if these_params['ticketSite'] in NET_TECHS:
+            set_assignment = NET_TECHS[these_params['ticketSite']]
         else:
-            set_assignment = nettechs['DIST']
+            set_assignment = NET_TECHS['DIST']
 
         this_ticket = Support_Ticket(
                 ticket_type=these_params['ticketType'],
@@ -166,9 +191,10 @@ def new_ticket():
         this_ticket.put()
         return jsonify({'message': 'OK'})
 
-    page_params['sites'] = sites
+    page_params['sites'] = SITES
     page_params['title'] = 'New Ticket'
-    page_params['message'] = 'please fill all fields to submit a new support ticket'
+    page_params['message'] = \
+            'please fill all fields to submit a new support ticket'
     return render_template('new_ticket.html', page_params=page_params)
 
 # POST = create # PUT = update # GET = retrieve # DELETE = delete # Backbone.js
@@ -178,14 +204,20 @@ def ticket(ticket_id):
     logging.info('ticket_id: %s' % ticket_id)
     if request.method == 'GET':
         this_query = Support_Ticket.get_by_id(int(ticket_id))
-        return Response(response=json.dumps(ticket_to_json(this_query)), mimetype="application/json")
+        return Response(
+                response=json.dumps(ticket_to_json(this_query)),
+                mimetype="application/json")
 
     elif request.method == 'PUT':
         these_params = request.json
         this_query = Support_Ticket.get_by_id(int(ticket_id))
         saved_notes = set([int(note.key().id()) for note in this_query.notes])
-        put_notes = set([int(note['noteId']) for note in these_params['ticketNotes'] if 'noteId' in note])
-        new_notes = [str(note['noteMessage']) for note in these_params['ticketNotes'] if 'noteId' not in note]
+        put_notes = set([int(note['noteId'])
+            for note in these_params['ticketNotes']
+            if 'noteId' in note])
+        new_notes = [str(note['noteMessage']) 
+                for note in these_params['ticketNotes']
+                if 'noteId' not in note]
         this_query.starred = these_params['ticketStarred']
 
         for note in new_notes:
@@ -199,18 +231,27 @@ def ticket(ticket_id):
                 this_note.delete()
 
         this_query.put()
-        return Response(response=json.dumps(ticket_to_json(Support_Ticket.get_by_id(int(ticket_id)))), mimetype="application/json")
+        return Response(
+                response=json.dumps(
+                    ticket_to_json(
+                        Support_Ticket.get_by_id(int(ticket_id)))),
+                mimetype="application/json")
     else:
         return jsonify({'message': 'ERROR'})
 
 @app.route('/tickets', methods=['GET'])
 def tickets():
     this_user = users.get_current_user()
-    this_query = Support_Ticket.gql("WHERE submitted_by = :submitted_by", submitted_by=users.get_current_user())
+    this_query = Support_Ticket.gql(
+            "WHERE submitted_by = :submitted_by",
+            submitted_by=users.get_current_user())
     these_tickets = [ticket_to_json(ticket) for ticket in this_query]
 
-    logging.info('this_user: %s requesting_tickets: %s' % (this_user, these_tickets))
-    return Response(response=json.dumps(these_tickets), mimetype="application/json")
+    logging.info('this_user: %s requesting_tickets: %s'
+            % (this_user, these_tickets))
+    return Response(
+            response=json.dumps(these_tickets),
+            mimetype="application/json")
 
 @app.route('/test', methods=['POST', 'GET', 'PUT', 'DELETE'])
 def test():
@@ -225,7 +266,9 @@ def page_not_found(error):
 @app.errorhandler(403)
 def http_forbidden(error):
     page_params['title'] = '403'
-    page_params['message'] = 'Access to this page is restricted to HBUHSD staff only. To access this page you must have a valid @hbuhsd.edu email account'
+    page_params['message'] = \
+            'Access to this page is restricted to HBUHSD staff only. To \
+            access this page you must have a valid @hbuhsd.edu email account'
     return render_template('403.html', page_params=page_params)
 
 if __name__ == "__main__":

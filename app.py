@@ -227,6 +227,10 @@ def ticket(ticket_id):
 
         if len(put_notes) < len(saved_notes):
             for note_to_remove in (saved_notes - put_notes):
+                logging.info(new_notes)
+                logging.info(put_notes)
+                logging.info(saved_notes)
+                logging.info(note_to_remove)
                 this_note = Note.get_by_id(int(note_to_remove))
                 this_note.delete()
 

@@ -42,7 +42,7 @@
                         <li><strong>Average Age:</strong> {{options.averageAge}}</li>-->
                     </ul>
                 </div>
-                <div class="span3" style="border-left:10px solid #08c;padding-left:10px;padding-bottom:10px;">
+                <div id="filterOptions" class="span3" style="border-left:10px solid #08c;padding-left:10px;padding-bottom:10px;">
                     <h3>Display Settings</h3>
                     <select id="displayOptions">
                         <option value="open">Open</option>
@@ -50,8 +50,7 @@
                         <option value="all">All</option>
                     </select>
                     <br>
-                    <input id="displaySearch" class="input" type="text" placeholder="Search Term"/>
-                    <button id="setFilter" class="btn btn-primary">Filter</button>
+                    <input id="displaySearch" class="input" type="text" placeholder="Filter Term"/>
                 </div>
             </div>
         </script>
@@ -175,13 +174,13 @@
 
             var Ticket = Backbone.Model.extend({
                 urlRoot: "/ticket",
+                initialize: function(){
+                    var self = this;
+                },
                 elevate: function(){
                     return true;
                 },
                 closeTicket: function(){
-                    return true;
-                },
-                addNote: function(){
                     return true;
                 },
                 toggleStar: function(){
@@ -205,17 +204,23 @@
                             };
                         };
                     };
-                    self.save();
+                    self.save({ticketNotes: theseNotes});
                 },
                 removeNote: function(note){
                     var self = this;
                     var theseNotes = self.get("ticketNotes");
+                    //console.log(theseNotes);
+                    //console.log(self.get("ticketNotes"));
                     for (var i=0;i<=theseNotes.length-1;i++){
+                        console.log(self.attributes);
                         if (theseNotes[i].noteId == note){
+                            //console.log('popping: '+theseNotes[i].noteId);
                             theseNotes.pop(i);
+                            //console.log(theseNotes[i]);
+                            //console.log(self.get("ticketNotes"));
                         }
                     }
-                    self.save();
+                    self.save({ticketNotes: theseNotes});
                 },
             });
 
@@ -270,7 +275,7 @@
                 },
                 initialize: function(){
                     var self = this;
-                    self.model.bind('change', self.render, self);
+                    self.model.bind('all', self.render, self);
                 },
                 render: function(){
                     var self = this;
@@ -294,13 +299,6 @@
                         },
                         elevatedMeta: META_LIST,
                     }
-                    var html = {
-                        elevatedMeta: function(){
-                            for(var i=0;i<=META_LIST.length-1;i++){
-                                console.log(META_LIST[i]);
-                            };
-                        },
-                    }
 
                     var context = {
                         ticket: thisTicket,
@@ -309,6 +307,7 @@
                     var source = template(context);
                     $(self.el).html(source);
                     self.delegateEvents();
+                    $('.chzn-select').chosen({allow_single_deselect:true});
                     return self;
                 },
                 closeTicket: function(){
@@ -330,6 +329,8 @@
                         return;
                     }
                     self.model.addNote(note);
+                    self.model.fetch({success: console.log(self.model.get("ticketNotes"))});
+                    console.log(self.model.get("ticketNotes"));
                     self.render();
                 },
                 removeNote: function(e){
@@ -368,6 +369,7 @@
                     }
                     var source = template(context);
                     $(self.el).html(source);
+                    $('.chzn-select').chosen({allow_single_deselect:true});
                     return self;
                 },
                 contextMenu: function(e){
@@ -387,11 +389,6 @@
                         model: this.model,
                     });
                     $('#layoutSingleTicket').html(thisTicket.render().el);
-                    $('.ticketNote').each(function(){
-                        $(this).tooltip({
-                            placement: 'left',
-                        });
-                    });
                     $('.chzn-select').chosen({allow_single_deselect:true});
                 },
                 closeTicket: function(){
@@ -402,7 +399,8 @@
             var HelpDesk = Backbone.View.extend({
                 tickets: new Tickets(),
                 events: {
-                    "click #setFilter": "setFilter",
+                    "click #displayOptions": "setFilter",
+                    "keypress #displaySearch": "setSearch",
                 },
                 initialize: function(options){
                     var self = this;
@@ -431,6 +429,13 @@
                     var source = template(context);
                     $(self.el).html(source);
                     return self;
+                },
+                setSearch: function(e){
+                    if (e.keyCode !== 13){
+                        return;
+                    };
+                    console.log('setSearch...');
+                    console.log($('#displaySearch').val());
                 },
                 setFilter: function(){
                     var self = this;
@@ -482,9 +487,11 @@
         <div class="container" style="margin-top:50px;">
             <div id="layoutAppHeader" class="row" style="border-radius:15px;border-bottom:10px solid #08c;border-top:10px solid #08c;"></div>
             <div class="row" style="margin-top:10px;">
-                <div id="layoutSingleTicket" class="span8"><h3>Select a Ticket</h3></div>
+                <div id="layoutSingleTicket" class="span8">
+                    <h3>Select a Ticket</h3>
+                </div>
                 <div id="layoutTicketList" class="span4">
-                    <span><h3>Tickets</h3></span>
+                    <h3>Tickets</h3>
                     <ul class="nav nav-pills nav-stacked"></ul>
                 </div>
             </div>

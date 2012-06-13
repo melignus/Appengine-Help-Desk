@@ -155,7 +155,7 @@ def home():
 
     page_params['title'] = 'Ticket Manager'
     page_params['message'] = 'tickets displayed are for user %s' % this_user
-    page_params['elevation_meta'] = json.dumps(ELEVATION_META)
+    page_params['user_name'] = this_user
 
     return render_template('manage_tickets.html', page_params=page_params)
 

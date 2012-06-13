@@ -32,47 +32,66 @@
         </script>
 
         <script id="appHeaderTemplate" type="text/x-handlebars-template">
+            <div class="row">
+                <div class="span8">
+                    <h3>Support Tickets For: {{options.username}}</h3>
+                    <ul style="list-style: none;">
+                        <li><strong>Open Tickets:</strong> {{options.openTickets}}</li>
+                        <li><strong>Closed Tickets:</strong> {{options.closedTickets}}</li>
+                        <!--<li><strong>Oldest Ticket:</strong> {{options.oldestTicket}}</li>
+                        <li><strong>Average Age:</strong> {{options.averageAge}}</li>-->
+                    </ul>
+                </div>
+                <div class="span3" style="border-left:10px solid #08c;padding-left:10px;padding-bottom:10px;">
+                    <h3>Display Settings</h3>
+                    <select id="displayOptions">
+                        <option value="open">Open</option>
+                        <option value="closed">Closed</option>
+                        <option value="all">All</option>
+                    </select>
+                    <br>
+                    <input id="displaySearch" class="input" type="text" placeholder="Search Term"/>
+                    <button id="setFilter" class="btn btn-primary">Filter</button>
+                </div>
+            </div>
         </script>
 
         <script id="singleTicketTemplate" type="text/x-handlebars-template">
-            <div class="row">
-                <div class="span3">
-                    <h3>Notes:</h3>
-                    <ul id="ticketNotes" style="list-style: none;">
-                        {{#each ticket.ticketNotes}}
-                        <li class="ticketNote" rel="tooltip" title="{{this.noteSubmittedBy}}"><i class="icon-remove removeMe" note-id="{{this.noteId}}" style="margin-right:5px;"></i>{{this.noteMessage}}</li>
-                        {{/each}}
-                        <li id="addNote"><h6>Add Note...</h6></li>
-                    </ul>
+            <div class="span3">
+                <h3>Notes:</h3>
+                <ul id="ticketNotes" style="list-style: none;">
+                    {{#each ticket.ticketNotes}}
+                    <li class="ticketNote" rel="tooltip" title="{{this.noteSubmittedBy}}"><i class="icon-remove removeMe" note-id="{{this.noteId}}" style="margin-right:5px;"></i>{{this.noteMessage}}</li>
+                    {{/each}}
+                    <li id="addNote"><h6>Add Note...</h6></li>
+                </ul>
+            </div>
+            <div class="span4">
+                <h3>Ticket: {{ticket.id}} For: {{ticket.ticketSubmittedBy}}</h3>
+                <p><strong>Submitted On:</strong> {{ticket.ticketSubmittedOn}}</p>
+                <p><strong>User:</strong> {{ticket.ticketUserType}}</p>
+                <p><strong>Equipment:</strong> {{ticket.ticketType}}</p>
+                <p><strong>Room/Building:</strong> {{ticket.ticketMacroLocation}}</p>
+                <p><strong>In Room:</strong> {{ticket.ticketMicroLocation}}</p>
+                <p><strong>Completed By:</strong> {{ticket.ticketCompletedBy}}</p>
+                <p><strong>Completed On:</strong> {{ticket.ticketCompletedOn}}</p>
+                <p><strong>Description:</strong> {{ticket.ticketDescription}}</p>
+                <hr>
+                <div style="text-align:center;">
+                    <select data-placeholder="Elevation Metadata" class="chzn-select span3">
+                    {{#each options.elevatedMeta}}
+                        <optgroup label="{{name}}">
+                        {{#types}}
+                            <option>{{this}}</option>
+                        {{/types}}
+                        </optgroup>
+                    {{/each}}
+                    </select>
+                    <br>
+                    <button id="elevateMe" style="margin-top:10px;" class="btn{{options.elevatedDisabled}}">{{options.elevatedText}}</button>
                 </div>
-                <div class="span4">
-                    <h3>Ticket: {{ticket.id}} For: {{ticket.ticketSubmittedBy}}</h3>
-                    <div class="well">
-                    <p><strong>Submitted On:</strong> {{ticket.ticketSubmittedOn}}</p>
-                    <p><strong>User:</strong> {{ticket.ticketUserType}}</p>
-                    <p><strong>Equipment:</strong> {{ticket.ticketType}}</p>
-                    <p><strong>Room/Building:</strong> {{ticket.ticketMacroLocation}}</p>
-                    <p><strong>In Room:</strong> {{ticket.ticketMicroLocation}}</p>
-                    <p><strong>Completed By:</strong> {{ticket.ticketCompletedBy}}</p>
-                    <p><strong>Completed On:</strong> {{ticket.ticketCompletedOn}}</p>
-                    <p><strong>Description:</strong> {{ticket.ticketDescription}}</p>
-                    <hr>
-                    <div style="text-align:center;">
-                        <select data-placeholder="Elevation Metadata" class="chzn-select span3">
-                        {{#each options.elevatedMeta}}
-                            <optgroup label="{{name}}">
-                            {{#types}}
-                                <option>{{this}}</option>
-                            {{/types}}
-                            </optgroup>
-                        {{/each}}
-                        </select>
-                        <button id="elevateMe" style="margin-top:10px;" class="btn{{options.elevatedDisabled}}">{{options.elevatedText}}</button>
-                    </div>
-                </div>
-                <div>
-                    <button id="closeMe" class="btn">Close Ticket</button>
-                </div>
+                <hr>
+                <button id="closeMe" class="btn btn-primary">Close Ticket</button>
             </div>
         </script>
         {% endraw %}
@@ -206,10 +225,34 @@
                 initialize: function(){
                 },
                 closed: function(){
-                    return true;
+                    var self = this;
+                    var closedTickets = [];
+                    for (var i=1;i<=self.length;i++){
+                        if (self.get(i).attributes.ticketCompletedOn !== 'None'){
+                            closedTickets.push(self.get(i));
+                        };
+                    };
+                    return closedTickets;
                 },
                 open: function(){
-                    return true;
+                    var self = this;
+                    var openTickets = [];
+                    for (var i=1;i<=self.length;i++){
+                        if (self.get(i).attributes.ticketCompletedOn == 'None'){
+                            openTickets.push(self.get(i));
+                        };
+                    };
+                    return openTickets;
+                },
+                elevated: function(){
+                    var self = this;
+                    var elevatedTickets = [];
+                    for (var i=1;i<=self.length;i++){
+                        if (self.get(i).attributes.ticketElevated){
+                            elevatedTickets.push(self.get(i));
+                        };
+                    };
+                    return elevatedTickets;
                 },
                 comparator: function(ticket){
                     return -ticket.get("ticketStarred");
@@ -221,7 +264,6 @@
                 events: {
                     "dblclick #addNote": "getNote",
                     "keypress #newNote": "addNote",
-                    "keypress #elevatedMeta": "syncMeta",
                     "dblclick .removeMe": "removeNote",
                     "click #closeMe": "closeTicket",
                     "click #elevateMe": "elevateTicket",
@@ -269,15 +311,6 @@
                     self.delegateEvents();
                     return self;
                 },
-                syncMeta: function(e){
-                    console.log('syncMeta...');
-                    var self = this;
-                    /*var meta = $('#elevatedMeta', self.el).val();
-                    if(!meta || e.keyCode !== 13){
-                        return;
-                    }*/
-                    self.render();
-                },
                 closeTicket: function(){
                     console.log('closeTicket...');
                 },
@@ -312,7 +345,7 @@
                 tagName: "li",
                 className: "ticketListItem",
                 events: {
-                    //"click .closeTicket": "closeTicket",
+                    "click .closeTicket": "closeTicket",
                     "click": "expandTicket",
                     "click .favMe": "toggleStar",
                 },
@@ -368,16 +401,43 @@
             //Base application view
             var HelpDesk = Backbone.View.extend({
                 tickets: new Tickets(),
+                events: {
+                    "click #setFilter": "setFilter",
+                },
                 initialize: function(options){
                     var self = this;
+                    self.displayOptions = 'open';
                     self.delegateEvents();
         
                     self.tickets.bind('all', self.addAll, self);
+                    self.tickets.bind('all', self.render, self);
         
                     self.tickets.fetch();
                 },
                 render: function(){
                     var self = this;
+                    var source = $('#appHeaderTemplate').html();
+                    var template = Handlebars.compile(source);
+                    var context = {
+                        options: {
+                            username: "{{page_params['user_name']}}",
+                            openTickets: self.tickets.open().length,
+                            closedTickets: self.tickets.closed().length,
+                            oldestTicket: "oldestTicket",
+                            averageAge: "averageAge",
+                        },
+                    };
+
+                    var source = template(context);
+                    $(self.el).html(source);
+                    return self;
+                },
+                setFilter: function(){
+                    var self = this;
+                    console.log('setFilter...');
+                    self.displayOptions = $('#displayOptions').val();
+                    self.addAll();
+                    $('#displaySearch').val('');
                 },
                 addOne: function(ticket){
                     var self = this;
@@ -388,15 +448,25 @@
                 },
                 addAll: function(){
                     var self = this;
+                    var theseTickets;
                     $('.ticketListItem').each(function(){
                         $(this).remove();
                     });
-                    self.tickets.each(self.addOne);
+                    if (self.displayOptions == 'open'){
+                        theseTickets = self.tickets.where({ticketCompletedOn: 'None'});
+                    } else if (self.displayOptions == 'closed'){
+                        theseTickets = self.tickets.where({ticketCompletedOn: !'None'});
+                    } else if (self.displayOptions == 'all'){
+                        theseTickets = self.tickets;
+                    } else if (self.displaySearch !== ''){
+                        console.log('search...');
+                    };
+                    theseTickets.forEach(self.addOne);
                 },
             });
 
             $(document).ready(function(){
-                manageTickets = new HelpDesk({el: $('#layoutTicketList')});
+                manageTickets = new HelpDesk({el: $('#layoutAppHeader')});
             });
         </script>
     </head>
@@ -410,8 +480,8 @@
             </div>
         </div>
         <div class="container" style="margin-top:50px;">
-            <div id="layoutAppHeader" class="row"></div>
-            <div class="row">
+            <div id="layoutAppHeader" class="row" style="border-radius:15px;border-bottom:10px solid #08c;border-top:10px solid #08c;"></div>
+            <div class="row" style="margin-top:10px;">
                 <div id="layoutSingleTicket" class="span8"><h3>Select a Ticket</h3></div>
                 <div id="layoutTicketList" class="span4">
                     <span><h3>Tickets</h3></span>

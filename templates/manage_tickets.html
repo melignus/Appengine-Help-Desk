@@ -69,7 +69,7 @@
                 <h3>Ticket: {{ticket.id}} For: {{ticket.submitted_by}}</h3>
                 <p><strong>Submitted On:</strong> {{ticket.submitted_on}}</p>
                 <p><strong>User:</strong> {{ticket.user_type}}</p>
-                <p><strong>Equipment:</strong> {{ticket.ticket_type}}</p>
+                <p><strong>Equipment:</strong> {{ticket.type}}</p>
                 <p><strong>Room/Building:</strong> {{ticket.macro}}</p>
                 <p><strong>In Room:</strong> {{ticket.micro}}</p>
                 <p><strong>Completed By:</strong> {{ticket.completed_by}}</p>
@@ -195,10 +195,6 @@
                         starred: !self.get("starred"),
                     });
                 },
-                addNote: function(note){
-                },
-                removeNote: function(note){
-                },
             });
 
             //note model
@@ -206,7 +202,7 @@
                 urlRoot: function(){
                     var self = this;
                     if (self.get("id")){
-                        return '/note/'+self.get("id");
+                        return '/note';
                     } else {
                         return '/note/'+'new';
                     }
@@ -227,6 +223,7 @@
                 removeNote: function(id){
                     var self = this;
                     self.get(id).destroy();
+                    self.fetch({success: function(){return}});
                 },
                 addNote: function(note){
                     var self = this;
@@ -275,9 +272,6 @@
                         };
                     };
                     return elevatedTickets;
-                },
-                comparator: function(ticket){
-                    return -ticket.get("starred");
                 },
             });
 
@@ -419,17 +413,17 @@
             var HelpDesk = Backbone.View.extend({
                 tickets: new Tickets(),
                 events: {
-                    "click #displayOptions": "setFilter",
+                    "change #displayOptions": "setFilter",
                     "keypress #displaySearch": "setSearch",
                 },
                 initialize: function(options){
                     var self = this;
                     self.displayOptions = 'open';
+                    self.displaySearch = '';
                     self.delegateEvents();
         
                     self.tickets.bind('all', self.addAll, self);
                     self.tickets.bind('all', self.render, self);
-        
                     self.tickets.fetch();
                 },
                 render: function(){
@@ -451,18 +445,17 @@
                     return self;
                 },
                 setSearch: function(e){
+                    var self = this;
                     if (e.keyCode !== 13){
                         return;
                     };
-                    console.log('setSearch...');
-                    console.log($('#displaySearch').val());
+                    self.displaySearch = $('#displaySearch').val();
+                    self.addAll();
                 },
                 setFilter: function(){
                     var self = this;
-                    console.log('setFilter...');
                     self.displayOptions = $('#displayOptions').val();
                     self.addAll();
-                    $('#displaySearch').val('');
                 },
                 addOne: function(ticket){
                     var self = this;
@@ -478,14 +471,69 @@
                         $(this).remove();
                     });
                     if (self.displayOptions == 'open'){
-                        theseTickets = self.tickets.where({completed_on: 'None'});
+                        theseTickets = self.tickets.filter(function(ticket){
+                            return ticket.get("completed_on") == 'None';
+                        });
                     } else if (self.displayOptions == 'closed'){
-                        theseTickets = self.tickets.where({completed_on: !'None'});
+                        theseTickets = self.tickets.filter(function(ticket){
+                            return ticket.get("completed_on") !== 'None';
+                        });
                     } else if (self.displayOptions == 'all'){
                         theseTickets = self.tickets;
-                    } else if (self.displaySearch !== ''){
-                        console.log('search...');
-                    };
+                    }
+                    if (self.displaySearch !== ''){
+                        if (self.displaySearch.indexOf(',') == -1){
+                            var searchTerms = [];
+                            searchTerms.push(self.displaySearch);
+                        } else {
+                            var searchTerms = self.displaySearch.split(',');
+                        }
+                        for (var i=0;i<=searchTerms.length-1;i++){
+                            if (searchTerms[i].indexOf(':') == -1){
+
+                            } else {
+                                var separaterIndex = searchTerms[i].indexOf(':');
+                                var parameter = searchTerms[i].slice(0, separaterIndex);
+                                var argument = searchTerms[i].slice(separaterIndex+1, searchTerms[i].length);
+                                switch(parameter){
+                                    case 'id':
+                                        theseTickets = theseTickets.filter(function(ticket){
+                                            return ticket.get("id") == argument;
+                                        });
+                                        break;
+                                    case 'who':
+                                        theseTickets = theseTickets.filter(function(ticket){
+                                            return ticket.get("submitted_by") == argument;
+                                        });
+                                        break;
+                                    case 'what':
+                                        theseTickets = theseTickets.filter(function(ticket){
+                                            return ticket.get("type") == argument;
+                                        });
+                                        break;
+                                    case 'where':
+                                        theseTickets = theseTickets.filter(function(ticket){
+                                            return ((ticket.get("macro") == argument) ||
+                                                (ticket.get("micro") == argument));
+                                        });
+                                        break;
+                                    case 'user':
+                                        theseTickets = theseTickets.filter(function(ticket){
+                                            return ticket.get("user_type") == argument;
+                                        });
+                                        break;
+                                    case 'starred':
+                                        theseTickets = theseTickets.filter(function(ticket){
+                                            return ticket.get("starred");
+                                        });
+                                        break;
+                                }
+                            }
+                        }
+                    }
+                    theseTickets = _.sortBy(theseTickets, function(ticket){
+                        return !ticket.get("starred");
+                    });
                     theseTickets.forEach(self.addOne);
                 },
             });

@@ -234,23 +234,19 @@ def notes(ticket_id):
 # POST = create # PUT = update # GET = retrieve # DELETE = delete # Backbone.js
 @app.route('/ticket/<ticket_id>', methods=['POST', 'GET', 'PUT', 'DELETE'])
 def ticket(ticket_id):
-    logging.info('method: %s' % request.method)
-    logging.info('ticket_id: %s' % ticket_id)
     if request.method == 'GET':
         this_query = Support_Ticket.get_by_id(int(ticket_id))
         return Response(
-                response=json.dumps(ticket_to_json(this_query)),
+                response=json.dumps({}),
                 mimetype="application/json")
 
     elif request.method == 'PUT':
         these_params = request.json
         this_query = Support_Ticket.get_by_id(int(ticket_id))
-        this_query.starred = these_params['ticketStarred']
+        this_query.starred = these_params['starred']
         this_query.put()
         return Response(
-                response=json.dumps(
-                    ticket_to_json(
-                        Support_Ticket.get_by_id(int(ticket_id)))),
+                response=json.dumps({}),
                 mimetype="application/json")
     else:
         return jsonify({'message': 'ERROR'})

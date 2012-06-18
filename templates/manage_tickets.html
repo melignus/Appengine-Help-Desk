@@ -24,9 +24,9 @@
         <script id="ticketListTemplate" type="text/x-handlebars-template">
             <a href="#">
                 <strong>#{{ticket.id}}</strong>
-                {{ticket.ticketType}}
-                {{ticket.ticketSubmittedBy}}
-                {{ticket.ticketSubmittedOn}}
+                {{ticket.ticket_type}}
+                {{ticket.submitted_by}}
+                {{ticket.submitted_on}}
                 <i class="{{icon}} pull-right favMe"></i>
             </a>
         </script>
@@ -59,22 +59,22 @@
             <div class="span3">
                 <h3>Notes:</h3>
                 <ul id="ticketNotes" style="list-style: none;">
-                    {{#each ticket.ticketNotes}}
-                    <li class="ticketNote" rel="tooltip" title="{{this.noteSubmittedBy}}"><i class="icon-remove removeMe" note-id="{{this.noteId}}" style="margin-right:5px;"></i>{{this.noteMessage}}</li>
+                    {{#each notes}}
+                    <li class="ticketNote" rel="tooltip" title="{{this.submitted_by}}"><i class="icon-remove removeMe" note-id="{{this.id}}" style="margin-right:5px;"></i>{{this.message}}</li>
                     {{/each}}
                     <li id="addNote"><h6>Add Note...</h6></li>
                 </ul>
             </div>
             <div class="span4">
-                <h3>Ticket: {{ticket.id}} For: {{ticket.ticketSubmittedBy}}</h3>
-                <p><strong>Submitted On:</strong> {{ticket.ticketSubmittedOn}}</p>
-                <p><strong>User:</strong> {{ticket.ticketUserType}}</p>
-                <p><strong>Equipment:</strong> {{ticket.ticketType}}</p>
-                <p><strong>Room/Building:</strong> {{ticket.ticketMacroLocation}}</p>
-                <p><strong>In Room:</strong> {{ticket.ticketMicroLocation}}</p>
-                <p><strong>Completed By:</strong> {{ticket.ticketCompletedBy}}</p>
-                <p><strong>Completed On:</strong> {{ticket.ticketCompletedOn}}</p>
-                <p><strong>Description:</strong> {{ticket.ticketDescription}}</p>
+                <h3>Ticket: {{ticket.id}} For: {{ticket.submitted_by}}</h3>
+                <p><strong>Submitted On:</strong> {{ticket.submitted_on}}</p>
+                <p><strong>User:</strong> {{ticket.user_type}}</p>
+                <p><strong>Equipment:</strong> {{ticket.ticket_type}}</p>
+                <p><strong>Room/Building:</strong> {{ticket.macro}}</p>
+                <p><strong>In Room:</strong> {{ticket.micro}}</p>
+                <p><strong>Completed By:</strong> {{ticket.completed_by}}</p>
+                <p><strong>Completed On:</strong> {{ticket.completed_on}}</p>
+                <p><strong>Description:</strong> {{ticket.description}}</p>
                 <hr>
                 <div style="text-align:center;">
                     <select data-placeholder="Elevation Metadata" class="chzn-select span3">
@@ -172,10 +172,16 @@
                 },
             ];
 
+            //ticket model
             var Ticket = Backbone.Model.extend({
                 urlRoot: "/ticket",
                 initialize: function(){
                     var self = this;
+                    self.notes = new Notes({ticketId: self.attributes.id});
+                    self.notes.bind("change", function(){
+                        self.save();
+                    })
+                    self.notes.fetch({success: function(){return}});
                 },
                 elevate: function(){
                     return true;
@@ -186,44 +192,55 @@
                 toggleStar: function(){
                     var self = this;
                     self.save({
-                        ticketStarred: !self.get("ticketStarred"),
+                        starred: !self.get("starred"),
                     });
                 },
                 addNote: function(note){
-                    var self = this;
-                    var theseNotes = self.get("ticketNotes");
-                    if (theseNotes.length == 0){
-                        theseNotes.push({noteMessage: note});
-                    } else {
-                        for (var i=0;i<=theseNotes.length-1;i++){
-                            if (theseNotes[i].noteMessage == note){
-                                break;
-                            } else {
-                                theseNotes.push({noteMessage: note});
-                                break;
-                            };
-                        };
-                    };
-                    self.save({ticketNotes: theseNotes});
                 },
                 removeNote: function(note){
-                    var self = this;
-                    var theseNotes = self.get("ticketNotes");
-                    //console.log(theseNotes);
-                    //console.log(self.get("ticketNotes"));
-                    for (var i=0;i<=theseNotes.length-1;i++){
-                        console.log(self.attributes);
-                        if (theseNotes[i].noteId == note){
-                            //console.log('popping: '+theseNotes[i].noteId);
-                            theseNotes.pop(i);
-                            //console.log(theseNotes[i]);
-                            //console.log(self.get("ticketNotes"));
-                        }
-                    }
-                    self.save({ticketNotes: theseNotes});
                 },
             });
 
+            //note model
+            var Note = Backbone.Model.extend({
+                urlRoot: function(){
+                    var self = this;
+                    if (self.get("id")){
+                        return '/note/'+self.get("id");
+                    } else {
+                        return '/note/'+'new';
+                    }
+                },
+            });
+
+            //notes collection
+            var Notes = Backbone.Collection.extend({
+                model: Note,
+                url: function(){
+                    var self = this;
+                    return '/notes/'+self.ticketId;
+                },
+                initialize: function(options){
+                    var self = this;
+                    self.ticketId = options.ticketId;
+                },
+                removeNote: function(id){
+                    var self = this;
+                    self.get(id).destroy();
+                },
+                addNote: function(note){
+                    var self = this;
+                    var newNote = new Note({
+                        for_ticket: self.ticketId,
+                        message: note,
+                    });
+                    newNote.save();
+                    self.push(newNote);
+                    self.fetch({success: function(){return}});
+                },
+            });
+
+            //tickets collection
             var Tickets = Backbone.Collection.extend({
                 model: Ticket,
                 url: '/tickets',
@@ -233,7 +250,7 @@
                     var self = this;
                     var closedTickets = [];
                     for (var i=1;i<=self.length;i++){
-                        if (self.get(i).attributes.ticketCompletedOn !== 'None'){
+                        if (self.get(i).attributes.completed_on !== 'None'){
                             closedTickets.push(self.get(i));
                         };
                     };
@@ -243,7 +260,7 @@
                     var self = this;
                     var openTickets = [];
                     for (var i=1;i<=self.length;i++){
-                        if (self.get(i).attributes.ticketCompletedOn == 'None'){
+                        if (self.get(i).attributes.completed_on == 'None'){
                             openTickets.push(self.get(i));
                         };
                     };
@@ -253,18 +270,18 @@
                     var self = this;
                     var elevatedTickets = [];
                     for (var i=1;i<=self.length;i++){
-                        if (self.get(i).attributes.ticketElevated){
+                        if (self.get(i).attributes.elevated){
                             elevatedTickets.push(self.get(i));
                         };
                     };
                     return elevatedTickets;
                 },
                 comparator: function(ticket){
-                    return -ticket.get("ticketStarred");
+                    return -ticket.get("starred");
                 },
             });
 
-            //Single ticket view in window
+            //single ticket view in window
             var SingleTicket = Backbone.View.extend({
                 events: {
                     "dblclick #addNote": "getNote",
@@ -280,18 +297,22 @@
                 render: function(){
                     var self = this;
                     var thisTicket = self.model.attributes;
+                    var theseNotes = [];
+                    self.model.notes.forEach(function(note){
+                        theseNotes.push(note.attributes);
+                    });
                     var source = $('#singleTicketTemplate').html();
                     var template = Handlebars.compile(source);
                     var options = {
                         elevatedButton: function(thisTicket){
-                            if(thisTicket.ticketElevated){
+                            if(thisTicket.elevated){
                                 return ' disabled';
                             } else {
                                 return '';
                             }
                         },
                         elevatedText: function(thisTicket){
-                            if(thisTicket.ticketElevated){
+                            if(thisTicket.elevated){
                                 return 'Elevated';
                             } else {
                                 return 'Elevate';
@@ -302,6 +323,7 @@
 
                     var context = {
                         ticket: thisTicket,
+                        notes: theseNotes,
                         options: options,
                     }
                     var source = template(context);
@@ -328,20 +350,18 @@
                     if(!note || e.keyCode !== 13){
                         return;
                     }
-                    self.model.addNote(note);
-                    self.model.fetch({success: console.log(self.model.get("ticketNotes"))});
-                    console.log(self.model.get("ticketNotes"));
+                    self.model.notes.addNote(note);
                     self.render();
                 },
                 removeNote: function(e){
                     var self = this;
                     var thisNote = $(e.srcElement).attr('note-id');
-                    self.model.removeNote(thisNote);
+                    self.model.notes.removeNote(thisNote);
                     self.render();
                 },
             });
 
-            //Ticket view in the list
+            //ticket view in the list
             var TicketView = Backbone.View.extend({
                 tagName: "li",
                 className: "ticketListItem",
@@ -358,7 +378,7 @@
                     var self = this;
                     var starred = 'icon-star-empty';
                     var thisTicket = self.model.attributes;
-                    if (thisTicket.ticketStarred){
+                    if (thisTicket.starred){
                         starred = 'icon-star';
                     }
                     var source = $('#ticketListTemplate').html();
@@ -395,7 +415,7 @@
                 },
             });
 
-            //Base application view
+            //base application view
             var HelpDesk = Backbone.View.extend({
                 tickets: new Tickets(),
                 events: {
@@ -458,9 +478,9 @@
                         $(this).remove();
                     });
                     if (self.displayOptions == 'open'){
-                        theseTickets = self.tickets.where({ticketCompletedOn: 'None'});
+                        theseTickets = self.tickets.where({completed_on: 'None'});
                     } else if (self.displayOptions == 'closed'){
-                        theseTickets = self.tickets.where({ticketCompletedOn: !'None'});
+                        theseTickets = self.tickets.where({completed_on: !'None'});
                     } else if (self.displayOptions == 'all'){
                         theseTickets = self.tickets;
                     } else if (self.displaySearch !== ''){

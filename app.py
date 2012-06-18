@@ -118,30 +118,32 @@ class Note(db.Model):
 
 def ticket_to_json(ticket):
     this_ticket = {
-            'ticketType': ticket.ticket_type,
-            'ticketUserType': ticket.user_type,
-            'ticketSite': ticket.site,
-            'ticketMacroLocation': ticket.macro,
-            'ticketMicroLocation': ticket.micro,
-            'ticketSubmittedOn': str(ticket.submitted_on)[:16],
-            'ticketSubmittedBy': str(ticket.submitted_by),
-            'ticketCompletedOn': str(ticket.completed_on)[:16],
-            'ticketCompletedBy': str(ticket.completed_by),
-            'ticketAssignedTo' : str(ticket.assigned_to),
-            'ticketDescription' : ticket.description,
-            'ticketElevated': ticket.elevated,
-            'ticketStarred': ticket.starred,
-            'ticketMeta': ticket.meta,
+            'type': ticket.ticket_type,
+            'user_type': ticket.user_type,
+            'site': ticket.site,
+            'macro': ticket.macro,
+            'micro': ticket.micro,
+            'submitted_on': str(ticket.submitted_on)[:16],
+            'submitted_by': str(ticket.submitted_by),
+            'completed_on': str(ticket.completed_on)[:16],
+            'completed_by': str(ticket.completed_by),
+            'assigned_to' : str(ticket.assigned_to),
+            'description' : ticket.description,
+            'elevated': ticket.elevated,
+            'starred': ticket.starred,
+            'meta': ticket.meta,
             'id': str(ticket.key().id()),
             }
-    these_notes = [{
-        'noteId': str(note.key().id()),
-        'noteMessage': note.message,
-        'noteSubmittedBy': str(note.submitted_by),
-        'noteSubmittedOn': str(note.submitted_on)[:16],
-        } for note in ticket.notes]
-    this_ticket['ticketNotes'] = these_notes
     return this_ticket
+
+def note_to_json(note):
+    this_note = {
+        'id': str(note.key().id()),
+        'message': note.message,
+        'submitted_by': str(note.submitted_by),
+        'submitted_on': str(note.submitted_on)[:16],
+        }
+    return this_note
 
 @app.route('/')
 def home():
@@ -171,18 +173,18 @@ def new_ticket():
         logging.info(request.form)
         these_params = request.form
 
-        if these_params['ticketSite'] in NET_TECHS:
-            set_assignment = NET_TECHS[these_params['ticketSite']]
+        if these_params['site'] in NET_TECHS:
+            set_assignment = NET_TECHS[these_params['site']]
         else:
             set_assignment = NET_TECHS['DIST']
 
         this_ticket = Support_Ticket(
-                ticket_type=these_params['ticketType'],
-                user_type=these_params['ticketUserType'],
-                site=these_params['ticketSite'],
-                macro=these_params['ticketMacroLocation'],
-                micro=these_params['ticketMicroLocation'],
-                description=these_params['ticketDescription'],
+                ticket_type=these_params['type'],
+                user_type=these_params['user_type'],
+                site=these_params['site'],
+                macro=these_params['macro'],
+                micro=these_params['micro'],
+                description=these_params['description'],
                 submitted_by=users.get_current_user(),
                 assigned_to=set_assignment,
                 elevated=False,
@@ -196,6 +198,38 @@ def new_ticket():
     page_params['message'] = \
             'please fill all fields to submit a new support ticket'
     return render_template('new_ticket.html', page_params=page_params)
+
+@app.route('/note/<note_id>', methods=['POST', 'GET', 'PUT', 'DELETE'])
+def note(note_id):
+    these_params = request.json
+    if note_id == 'new' and request.method == 'POST':
+        Note(for_ticket=Support_Ticket.get_by_id(int(these_params['for_ticket'])),
+                message=these_params['message']).put()
+        return Response(
+                response=json.dumps({}),
+                mimetype="application/json")
+
+    if request.method == 'GET':
+        this_note = Note.get_by_id(int(note_id))
+        return Response(
+                response=json.dumps(
+                    note_to_json(this_note)),
+                mimetype="application/json")
+    elif request.method == 'DELETE':
+        this_note = Note.get_by_id(int(note_id))
+        this_note.delete()
+        return Response(
+                response=json.dumps({}),
+                mimetype="application/json")
+
+@app.route('/notes/<ticket_id>', methods=['POST', 'GET', 'PUT', 'DELETE'])
+def notes(ticket_id):
+    logging.info('notes request for ticket_id: %s' % int(ticket_id))
+    this_query = Support_Ticket.get_by_id(int(ticket_id))
+    these_notes = [note_to_json(note) for note in this_query.notes]
+    return Response(
+            response=json.dumps(these_notes),
+            mimetype="application/json")
 
 # POST = create # PUT = update # GET = retrieve # DELETE = delete # Backbone.js
 @app.route('/ticket/<ticket_id>', methods=['POST', 'GET', 'PUT', 'DELETE'])
@@ -211,29 +245,7 @@ def ticket(ticket_id):
     elif request.method == 'PUT':
         these_params = request.json
         this_query = Support_Ticket.get_by_id(int(ticket_id))
-        saved_notes = set([int(note.key().id()) for note in this_query.notes])
-        put_notes = set([int(note['noteId'])
-            for note in these_params['ticketNotes']
-            if 'noteId' in note])
-        new_notes = [str(note['noteMessage']) 
-                for note in these_params['ticketNotes']
-                if 'noteId' not in note]
         this_query.starred = these_params['ticketStarred']
-
-        for note in new_notes:
-            Note(for_ticket=this_query,
-                    message=note,
-                    submitted_by=users.get_current_user()).put()
-
-        if len(put_notes) < len(saved_notes):
-            for note_to_remove in (saved_notes - put_notes):
-                logging.info(new_notes)
-                logging.info(put_notes)
-                logging.info(saved_notes)
-                logging.info(note_to_remove)
-                this_note = Note.get_by_id(int(note_to_remove))
-                this_note.delete()
-
         this_query.put()
         return Response(
                 response=json.dumps(

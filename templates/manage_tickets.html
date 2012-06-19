@@ -77,7 +77,7 @@
                 <p><strong>Description:</strong> {{ticket.description}}</p>
                 <hr>
                 <div style="text-align:center;">
-                    <select data-placeholder="Elevation Metadata" class="chzn-select span3">
+                    <select data-placeholder="Elevation Metadata..." class="chzn-select span3">
                     {{#each options.elevatedMeta}}
                         <optgroup label="{{name}}">
                         {{#types}}
@@ -90,7 +90,15 @@
                     <button id="elevateMe" style="margin-top:10px;" class="btn{{options.elevatedDisabled}}">{{options.elevatedText}}</button>
                 </div>
                 <hr>
-                <button id="closeMe" class="btn btn-primary">Close Ticket</button>
+                <div style="text-align:center;">
+                    <select data-placeholder="Closure Meta..." multiple class="chzn-select span3">
+                    {{#each options.completeMeta}}
+                        <option>{{this}}</option>
+                    {{/each}}
+                    </select>
+                    <br>
+                    <button id="closeMe" class="btn btn-primary">Close Ticket</button>
+                </div>
             </div>
         </script>
         {% endraw %}
@@ -171,6 +179,21 @@
                     ]
                 },
             ];
+
+            var COMPLETE_META = ["Computer","Printer","Windows","Win95",
+                "Win2k","WinXp","WinVista","Win7","Win8","IE","IE6","IE7",
+                "IE9","Office","Word","Outlook","Excel","LibreOffice",
+                "OpenOffice","Browser","Cookies","History","Icon","Desktop",
+                "Reboot","Power Off","Firefox","Chrome","Safari","Opera",
+                "Netscape","Mac","Apple","OSX","Tiger","Intel","Dell","HP",
+                "Google","Lion","Snow Leopard","SB2000","Citrix","Read180",
+                "System44","Plato","Illuminate","Camera","Document Camera",
+                "Flash","Java","Virus","Malware","SB2000 Classroom","Google",
+                "Gmail","Google Docs","Google Drive","Google Calendar",
+                "Google Sites","Scanner","YouTube","Video","Audio CD",
+                "Speakers","Sound","Video CD","DVD","Projector","Cable",
+                "Ethernet","Wireless","Laptop","PowerSupply","Firewire","USB",
+                "Display","iPad","iPod","MacBook","iMac","PowerMac",];
 
             //ticket model
             var Ticket = Backbone.Model.extend({
@@ -287,6 +310,7 @@
                 initialize: function(){
                     var self = this;
                     self.model.bind('all', self.render, self);
+                    self.model.notes.bind('all', self.render, self);
                 },
                 render: function(){
                     var self = this;
@@ -313,6 +337,7 @@
                             }
                         },
                         elevatedMeta: META_LIST,
+                        completeMeta: COMPLETE_META,
                     }
 
                     var context = {
@@ -479,7 +504,9 @@
                             return ticket.get("completed_on") !== 'None';
                         });
                     } else if (self.displayOptions == 'all'){
-                        theseTickets = self.tickets;
+                        theseTickets = self.tickets.filter(function(ticket){
+                            return ticket;
+                        });
                     }
                     if (self.displaySearch !== ''){
                         if (self.displaySearch.indexOf(',') == -1){

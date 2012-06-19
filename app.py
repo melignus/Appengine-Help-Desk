@@ -71,21 +71,9 @@ IS_HELP = [
 ETS = [
         ]
 
-ELEVATION_META = {
-        }
-
-CLOSE_META = [
-        ]
-
 app = Flask(__name__)
 
 page_params = {}
-
-class Elevated(db.Model):
-    elevated_on = db.DateTimeProperty(auto_now_add=True)
-    elevated_by = db.UserProperty()
-    elevated_because = db.StringProperty()
-    elevated_meta = db.StringListProperty()
 
 class Support_Ticket(db.Model):
     ticket_type = db.StringProperty()
@@ -97,16 +85,24 @@ class Support_Ticket(db.Model):
     submitted_on = db.DateTimeProperty(auto_now_add=True)
     submitted_by = db.UserProperty()
     
+    closed = db.BooleanProperty()
     completed_on = db.DateTimeProperty()
     completed_by = db.UserProperty()
+    completed_meta = db.StringListProperty()
 
     assigned_to = db.StringProperty()
     description = db.StringProperty()
+
     elevated = db.BooleanProperty()
-    elevated_info = db.ReferenceProperty(Elevated)
+    elevated_on = db.DateTimeProperty()
+    elevated_by = db.UserProperty()
+    elevated_reason = db.StringProperty()
 
     starred = db.BooleanProperty()
-    meta = db.StringListProperty()
+    priority = db.BooleanProperty()
+    on_hold = db.BooleanProperty()
+    #send_to_todo = db.BooleanProperty()
+    #due_date = db.DateTimeProperty()
 
 class Note(db.Model):
     for_ticket = db.ReferenceProperty(Support_Ticket, 
@@ -131,7 +127,6 @@ def ticket_to_json(ticket):
             'description' : ticket.description,
             'elevated': ticket.elevated,
             'starred': ticket.starred,
-            'meta': ticket.meta,
             'id': str(ticket.key().id()),
             }
     return this_ticket
@@ -188,7 +183,9 @@ def new_ticket():
                 submitted_by=users.get_current_user(),
                 assigned_to=set_assignment,
                 elevated=False,
+                closed=False,
                 starred=False,
+                priority=False,
                 )
         this_ticket.put()
         return jsonify({'message': 'OK'})

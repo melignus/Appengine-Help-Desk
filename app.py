@@ -121,12 +121,14 @@ def ticket_to_json(ticket):
             'micro': ticket.micro,
             'submitted_on': str(ticket.submitted_on)[:16],
             'submitted_by': str(ticket.submitted_by),
+            'closed': ticket.closed,
             'completed_on': str(ticket.completed_on)[:16],
             'completed_by': str(ticket.completed_by),
             'assigned_to' : str(ticket.assigned_to),
             'description' : ticket.description,
             'elevated': ticket.elevated,
             'starred': ticket.starred,
+            'priority': ticket.priority,
             'id': str(ticket.key().id()),
             }
     return this_ticket
@@ -186,6 +188,7 @@ def new_ticket():
                 closed=False,
                 starred=False,
                 priority=False,
+                on_hold=False,
                 )
         this_ticket.put()
         return jsonify({'message': 'OK'})
@@ -198,6 +201,7 @@ def new_ticket():
 
 @app.route('/note/<note_id>', methods=['POST', 'GET', 'PUT', 'DELETE'])
 def note(note_id):
+    logging.info('notes request: %s' % request.json)
     these_params = request.json
     if note_id == 'new' and request.method == 'POST':
         Note(for_ticket=Support_Ticket.get_by_id(int(these_params['for_ticket'])),
@@ -236,10 +240,16 @@ def ticket(ticket_id):
         return Response(
                 response=json.dumps({}),
                 mimetype="application/json")
-
     elif request.method == 'PUT':
         these_params = request.json
         this_query = Support_Ticket.get_by_id(int(ticket_id))
+        if not this_query.closed and these_params['closed']:
+            if not these_params['completed_meta']:
+                these_params['completed_meta'] = []
+            this_query.closed = True
+            this_query.completed_on = datetime.datetime.now()
+            this_query.completed_by = users.get_current_user()
+            this_query.completed_meta = these_params['completed_meta']
         this_query.starred = these_params['starred']
         this_query.put()
         return Response(

@@ -17,7 +17,7 @@
         $('.alternate').each(function() {
             $(this).hide();
         });
-        $('.has-alternate').click(function() {
+        $('.has-alternate').change(function() {
             var otherInput = false;
             var thisId = $('.control-label', this).attr('for');
             var thisAlternate = $('.alternate', this);
@@ -38,31 +38,31 @@
         $('#submitTicket').click(function(){
             var formData = {};
             if ($('#ticketSite').val() == 'Other'){
-                formData['ticketSite'] = $('#altTicketSite').val();
+                formData['site'] = $('#altTicketSite').val();
             } else {
-                formData['ticketSite'] = $('#ticketSite').val();
+                formData['site'] = $('#ticketSite').val();
             }
             $('#ticketType :input').each(function(){
                 if($(this).attr('checked')){
                     if($(this).val() == 'Other'){
-                        formData['ticketType'] = $('#altTicketType').val();
+                        formData['type'] = $('#altTicketType').val();
                     } else {
-                        formData['ticketType'] = $(this).val();
+                        formData['type'] = $(this).val();
                     }
                 }
             });
             $('#ticketUserType :input').each(function(){
                 if($(this).attr('checked')){
                     if($(this).val() == 'Other'){
-                        formData['ticketUserType'] = $('#altTicketUserType').val();
+                        formData['user_type'] = $('#altTicketUserType').val();
                     } else {
-                        formData['ticketUserType'] = $(this).val();
+                        formData['user_type'] = $(this).val();
                     }
                 }
             });
-            formData['ticketMacroLocation'] = $('#ticketMacroLocation').val();
-            formData['ticketMicroLocation'] = $('#ticketMicroLocation').val();
-            formData['ticketDescription'] = $('#ticketDescription').val();
+            formData['macro'] = $('#ticketMacroLocation').val();
+            formData['micro'] = $('#ticketMicroLocation').val();
+            formData['description'] = $('#ticketDescription').val();
             console.log(formData);
             $.ajax({
                 type: 'POST',

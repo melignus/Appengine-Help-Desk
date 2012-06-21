@@ -30,7 +30,7 @@
                 {{ticket.submitted_by}}
                 {{ticket.submitted_on}}
                 <div class="pull-right">
-                {{#if ticket.elevated}}<i class="icon-arrow-up"></id>{{/if}}
+                {{#if ticket.elevated}}<i class="icon-arrow-up"></i>{{/if}}
                 {{#if ticket.priority}}<i class="icon-exclamation-sign"></i>{{/if}}
                 {{#if ticket.closed}}<i class="icon-ok"></i>
                 {{else}}<i class="{{icon}} favMe"></i>{{/if}}
@@ -67,7 +67,18 @@
                 <h3>Notes:</h3>
                 <ul id="ticketNotes" style="list-style: none;">
                     {{#each notes}}
-                    <li class="ticketNote" rel="tooltip"><i class="icon-remove removeMe" note-id="{{this.id}}" style="margin-right:5px;"></i>{{this.message}}</li>
+                    <li class="ticketNote">
+                        <i class="icon-remove removeMe" note-id="{{this.id}}" style="margin-right:5px;"></i>
+                        {{#if this.assigned_to}}
+                        <em rel="tooltip" class="noteInformaion" style="color:#08c;" title="From:{{this.submitted_by}} To:{{this.assigned_to}}">
+                            {{this.message}}
+                        </em>
+                        {{else}}
+                        <span rel="tooltip" class="noteInformation" title="From:{{this.submitted_by}}">
+                            {{this.message}}
+                        </span>
+                        {{/if}}
+                    </li>
                     {{/each}}
                     <li id="addNote"><h6>Add Note...</h6></li>
                 </ul>
@@ -79,6 +90,12 @@
                 <p><strong>Equipment:</strong> {{ticket.type}}</p>
                 <p><strong>Room/Building:</strong> {{ticket.macro}}</p>
                 <p><strong>In Room:</strong> {{ticket.micro}}</p>
+                {{#if ticket.elevated}}
+                <p><strong>Elevated On:</strong> {{ticket.elevated_on}}</p>
+                <p><strong>Elevated By:</strong> {{ticket.elevated_by}}</p>
+                <p><strong>Reason for Elevation:</strong> {{ticket.elevated_reason}}</p>
+                {{else}}
+                {{/if}}
                 {{#if ticket.closed}}
                 <p><strong>Completed By:</strong> {{ticket.completed_by}}</p>
                 <p><strong>Completed On:</strong> {{ticket.completed_on}}</p>
@@ -98,7 +115,13 @@
                     {{/each}}
                     </select>
                     <br>
-                    <button id="elevateMe" style="margin-top:10px;" class="btn{{options.elevatedDisabled}}">{{options.elevatedText}}</button>
+                    <button id="elevateMe" style="margin-top:10px;" {{#if ticket.elevated}}disabled{{/if}}>
+                        {{#if ticket.elevated}}
+                        Elevated
+                        {{else}}
+                        Elevate
+                        {{/if}}
+                    </button>
                 </div>
                 <hr>
                 <div style="text-align:center;">

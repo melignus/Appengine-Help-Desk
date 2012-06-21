@@ -97,8 +97,12 @@ var Ticket = Backbone.Model.extend({
         self.notes = new Notes({ticketId: self.get("id")});
         self.notes.fetch();
     },
-    elevate: function(){
-        return true;
+    elevate: function(elevationMeta){
+        var self = this;
+        self.save({
+            elevated: true,
+            elevated_reason: elevationMeta,
+        });
     },
     close: function(completedMeta){
         var self = this;
@@ -140,15 +144,28 @@ var Notes = Backbone.Collection.extend({
     },
     removeNote: function(id){
         var self = this;
-        self.get(id).destroy();
+        self.get(id).destroy({
+            wait: true,
+        });
     },
     addNote: function(note){
         var self = this;
         if (note !== ''){
-            var newNote = new Note({
-                for_ticket: self.ticketId,
-                message: note,
-            });
+            if (note.indexOf(':') == -1){
+                var newNote = new Note({
+                    for_ticket: self.ticketId,
+                    message: note,
+                });
+            } else {
+                var assignedTo = note.slice(0, note.indexOf(':'));
+                var thisMessage = note.slice(note.indexOf(':')+1, note.length);
+                var newNote = new Note({
+                    for_ticket: self.ticketId,
+                    message: thisMessage,
+                    assigned_to: assignedTo,
+                });
+            }
+            console.log(newNote);
             newNote.save();
             self.fetch();
         }
@@ -238,6 +255,11 @@ var SingleTicket = Backbone.View.extend({
         var source = template(context);
         $(self.el).html(source);
         $('.chzn-select').chosen({allow_single_deselect:true});
+        $('.noteInformation').each(function(){
+            $(this).tooltip({
+                animation: false,
+            });
+        });
         return self;
     },
     closeTicket: function(){
@@ -246,18 +268,25 @@ var SingleTicket = Backbone.View.extend({
         self.model.close(completedMeta);
     },
     elevateTicket: function(){
-        console.log('elevateTicket...');
+        var self = this;
+        var elevationMeta = $('#elevationMeta').val();
+        self.model.elevate(elevationMeta);
     },
     getNote: function(){
         var self = this;
         $('#addNote', self.el).remove();
-        $('#ticketNotes', self.el).append('<li id="newNoteList"><input id="newNote" type="text" class="input" /></li>');
+        $('#ticketNotes', self.el).append('<li id="newNoteList"><input id="newNote" type="text" class="input span2" /></li>');
         $('#newNote').focus();
     },
     addNote: function(e){
         var self = this;
         var note = $('#newNote', self.el).val();
-        if(!note || e.keyCode !== 13){
+        if (e.keyCode == 27){
+            console.log('esc pressed...');
+            self.render();
+            return;
+        }
+        if (!note || e.keyCode !== 13){
             return;
         }
         self.model.notes.addNote(note);
@@ -314,6 +343,11 @@ var TicketView = Backbone.View.extend({
         });
         $('#layoutSingleTicket').html(thisTicket.render().el);
         $('.chzn-select').chosen({allow_single_deselect:true});
+        $('.noteInformation').each(function(){
+            $(this).tooltip({
+                animation: false,
+            });
+        });
     },
 });
 
@@ -439,6 +473,11 @@ var HelpDesk = Backbone.View.extend({
                         case 'starred':
                             theseTickets = theseTickets.filter(function(ticket){
                                 return ticket.get("starred");
+                            });
+                            break;
+                        case 'elevated':
+                            theseTickets = theseTickets.filter(function(ticket){
+                                return ticket.get("elevated");
                             });
                             break;
                     }

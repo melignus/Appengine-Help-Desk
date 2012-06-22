@@ -111,7 +111,6 @@ class Support_Ticket(db.Model):
     completed_meta = db.StringListProperty()
 
     assigned_to = db.StringProperty()
-    invited = db.StringListProperty()
     description = db.StringProperty()
 
     elevated = db.BooleanProperty()
@@ -200,19 +199,18 @@ def get_my_tickets(user):
 
 @app.route('/')
 def home():
-    if run_on_google:
-        logging.info(users.get_current_user())
-        this_user = str(users.get_current_user())
-        if not re.match('.*@.*', this_user):
-            this_user += '@hbuhsd.edu'
-    else:
-        this_user = 'test@hbuhsd.edu'
-
-    page_params['title'] = 'Ticket Manager'
-    page_params['message'] = 'tickets displayed are for user %s' % this_user
+    logging.info(users.get_current_user())
+    this_user = str(users.get_current_user())
     page_params['user_name'] = this_user
 
-    return render_template('manage_tickets.html', page_params=page_params)
+    if this_user in ADMINS:
+        return render_template('admin_tickets.html',
+                page_params=page_params)
+    elif (this_user in NET_TECHS) or (this_user in ETS):
+        return render_template('manage_tickets.html', 
+                page_params=page_params)
+    else:
+        return abort(403)
 
 @app.route('/new_ticket', methods=['POST', 'GET', 'PUT', 'DELETE'])
 def new_ticket():

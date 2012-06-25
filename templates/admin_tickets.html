@@ -12,7 +12,7 @@
         <script type="text/javascript" src="/static/js/handlebars.js"></script>
         <script type="text/javascript" src="/static/js/chosen.jquery.min.js"></script>
 
-        <script type="text/javascript" src="/static/js/manage_tickets.js"></script>
+        <script type="text/javascript" src="/static/js/admin_tickets.js"></script>
 
         <link rel="shortcut icon" href="/static/favicon.ico" />
         <link rel="stylesheet" href="/static/css/bootstrap.min.css" />
@@ -41,7 +41,7 @@
         <script id="appHeaderTemplate" type="text/x-handlebars-template">
             <div class="row">
                 <div class="span8">
-                    <h3>Support Tickets For: {{options.username}}</h3>
+                    <h3>Support Ticket Administration: {{options.username}}</h3>
                     <ul style="list-style: none;">
                         <li><strong>Open Tickets:</strong> {{options.openTickets}}</li>
                         <li><strong>Closed Tickets:</strong> {{options.closedTickets}}</li>
@@ -85,22 +85,26 @@
             </div>
             <div class="span4">
                 <h3>Ticket: {{ticket.id}} For: {{ticket.submitted_by}}</h3>
+                <p id="reassign" class="sortme" value="{{ticket.assigned_to}}"><strong>Assigned To:</strong> {{ticket.assigned_to}}</p>
+                <p><strong>Site:</strong> {{ticket.site}}</p>
                 <p><strong>Submitted On:</strong> {{ticket.submitted_on}}</p>
                 <p><strong>User:</strong> {{ticket.user_type}}</p>
                 <p><strong>Equipment:</strong> {{ticket.type}}</p>
                 <p><strong>Room/Building:</strong> {{ticket.macro}}</p>
                 <p><strong>In Room:</strong> {{ticket.micro}}</p>
+                <p><strong>Description:</strong> {{ticket.description}}</p>
                 {{#if ticket.elevated}}
                 <p><strong>Elevated On:</strong> {{ticket.elevated_on}}</p>
                 <p><strong>Elevated By:</strong> {{ticket.elevated_by}}</p>
                 <p><strong>Reason for Elevation:</strong> {{ticket.elevated_reason}}</p>
+                <p><button id="deelevate" class="btn btn-primary">De-Elevate</button></p>
                 {{else}}
                 {{/if}}
                 {{#if ticket.closed}}
                 <p><strong>Completed By:</strong> {{ticket.completed_by}}</p>
                 <p><strong>Completed On:</strong> {{ticket.completed_on}}</p>
+                <p><button id="reopen" class="btn btn-primary">Reopen</button></p>
                 {{/if}}
-                <p><strong>Description:</strong> {{ticket.description}}</p>
                 {{#if ticket.closed}}
                 {{else}}
                 <hr>
@@ -163,7 +167,7 @@
                 <div id="layoutFooter">
                     <div class="footer" style="text-align:center;">
                         <hr>
-                        HBUHSD Help Desk via Flask Backbone.js Handlebars.js Twitter Bootstrap on Python/Google App Engine
+                        GAE Help Desk via Flask Backbone.js Handlebars.js Twitter Bootstrap on Python/Google App Engine
                     </div>
                 </div>
             </div>

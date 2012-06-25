@@ -96,9 +96,6 @@ var Ticket = Backbone.Model.extend({
         var self = this;
         self.notes = new Notes({ticketId: self.get("id")});
         self.notes.fetch();
-        
-        //self.invites = new Invites({ticketId: self.get("id")});
-        //self.invites.fetch();
     },
     elevate: function(elevationMeta){
         var self = this;
@@ -106,6 +103,7 @@ var Ticket = Backbone.Model.extend({
             elevated: true,
             elevated_reason: elevationMeta,
         });
+        self.fetch({wait: true});
     },
     close: function(completedMeta){
         var self = this;
@@ -113,6 +111,7 @@ var Ticket = Backbone.Model.extend({
             closed: true,
             completed_meta: completedMeta,
         });
+        self.fetch({wait: true});
     },
     toggleStar: function(){
         var self = this;
@@ -121,44 +120,6 @@ var Ticket = Backbone.Model.extend({
         });
     },
 });
-
-/*
-//invite model
-var Invite = Backbone.Model.extend({
-    urlRoot: function(){
-        var self = this;
-        if (self.get("id")){
-            return '/invite';
-        } else {
-            return '/invite'+'new';
-        }
-    },
-});
-
-//invites
-var Invites = Backbone.Collection.extend({
-    model: Invite,
-    url: function(){
-        var self = this;
-        return '/notes/'+self.ticketId;
-    },
-    initialize: function(options){
-        var self = this;
-        self.ticketId = options.ticketId;
-    },
-    removeInvite: function(id){
-        var self = this;
-        self.get(id).destroy({
-            wait: true,
-        });
-    },
-    addInvite: function(invite){
-        var self = this;
-        if (invite !== ''){
-            var newInvite = new Invite({
-            });
-});
-*/
 
 //note model
 var Note = Backbone.Model.extend({

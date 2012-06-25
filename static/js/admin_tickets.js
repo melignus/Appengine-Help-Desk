@@ -97,8 +97,6 @@ var Ticket = Backbone.Model.extend({
         self.notes = new Notes({ticketId: self.get("id")});
         self.notes.fetch();
         
-        //self.invites = new Invites({ticketId: self.get("id")});
-        //self.invites.fetch();
     },
     elevate: function(elevationMeta){
         var self = this;
@@ -106,6 +104,14 @@ var Ticket = Backbone.Model.extend({
             elevated: true,
             elevated_reason: elevationMeta,
         });
+        self.fetch({wait: true});
+    },
+    deelevate: function(){
+        var self = this;
+        self.save({
+            elevated: false,
+        });
+        self.fetch({wait: true});
     },
     close: function(completedMeta){
         var self = this;
@@ -113,6 +119,14 @@ var Ticket = Backbone.Model.extend({
             closed: true,
             completed_meta: completedMeta,
         });
+        self.fetch({wait: true});
+    },
+    reopen: function(){
+        var self = this;
+        self.save({
+            closed: false,
+        });
+        self.fetch({wait: true});
     },
     toggleStar: function(){
         var self = this;
@@ -120,45 +134,14 @@ var Ticket = Backbone.Model.extend({
             starred: !self.get("starred"),
         });
     },
-});
-
-/*
-//invite model
-var Invite = Backbone.Model.extend({
-    urlRoot: function(){
+    reassign: function(assignTo){
         var self = this;
-        if (self.get("id")){
-            return '/invite';
-        } else {
-            return '/invite'+'new';
-        }
-    },
-});
-
-//invites
-var Invites = Backbone.Collection.extend({
-    model: Invite,
-    url: function(){
-        var self = this;
-        return '/notes/'+self.ticketId;
-    },
-    initialize: function(options){
-        var self = this;
-        self.ticketId = options.ticketId;
-    },
-    removeInvite: function(id){
-        var self = this;
-        self.get(id).destroy({
-            wait: true,
+        self.save({
+            assigned_to: assignTo
         });
+        self.fetch({wait: true});
     },
-    addInvite: function(invite){
-        var self = this;
-        if (invite !== ''){
-            var newInvite = new Invite({
-            });
 });
-*/
 
 //note model
 var Note = Backbone.Model.extend({
@@ -250,11 +233,16 @@ var Tickets = Backbone.Collection.extend({
 var SingleTicket = Backbone.View.extend({
     events: {
         "dblclick #addNote": "getNote",
-        "dblclick #inviteUser": "getInvite",
         "keypress #newNote": "addNote",
+        "keypress #newAssignment": "setReassignment",
         "dblclick .removeMe": "removeNote",
+        "dblclick #reassign": "getReassignment",
         "click #closeMe": "closeTicket",
         "click #elevateMe": "elevateTicket",
+        "click #reopen": "reopenTicket",
+        "click #deelevate": "deelevateTicket",
+        "click .cancel": "render",
+        "click .sortme": "sortMe",
     },
     initialize: function(){
         var self = this;
@@ -304,49 +292,59 @@ var SingleTicket = Backbone.View.extend({
         });
         return self;
     },
+    sortMe: function(e){
+        console.log($(e));
+    },
     closeTicket: function(){
         var self = this;
         var completedMeta = $('#completedMeta').val();
         self.model.close(completedMeta);
+    },
+    reopenTicket: function(){
+        var self = this;
+        self.model.reopen();
     },
     elevateTicket: function(){
         var self = this;
         var elevationMeta = $('#elevationMeta').val();
         self.model.elevate(elevationMeta);
     },
-    getInvite: function(){
+    deelevateTicket: function(){
         var self = this;
-        $('#inviteUser', self.el).remove();
-        $('#ticketInvites', self.el).append('<li id="newInviteList"><input id="newInvite" type="text" class="input span2" /></li>');
-        $('#newInvite').focus();
-    },
-    addInvite: function(e){
-        var self = this;
-        var invite = $('#newInvite', self.el).val();
-        if (e.keyCode == 27){
-            self.render();
-            return;
-        }
-        if (!invite || e.keyCode !== 13){
-            return;
-        }
-        self.model.invites.addInvite(invite);
+        self.model.deelevate();
     },
     removeInvite: function(){
         var self = this;
         var thisInvite = $(e.srcElement).attr('invite-id');
         self.model.invites.removeInvite(thisInvite);
     },
+    getReassignment: function(){
+        var self = this;
+        $('#reassign').html('<strong>Reassign to email:</strong><div class="input-append"><input id="newAssignment" type="text" class="input span2"><button class="btn cancel"><i class="icon-remove"></i></button></div>');
+        $('#newAssignment').focus();
+    },
+    setReassignment: function(e){
+        var self = this;
+        var reassignment = $('#newAssignment').val();
+        if (e.keyCode === 27){
+            self.render();
+            return;
+        }
+        if (!reassignment || e.keyCode !== 13){
+            return;
+        }
+        self.model.reassign(reassignment);
+    },
     getNote: function(){
         var self = this;
         $('#addNote', self.el).remove();
-        $('#ticketNotes', self.el).append('<li id="newNoteList"><input id="newNote" type="text" class="input span2" /></li>');
+        $('#ticketNotes', self.el).append('<li id="newNoteList"><div class="input-append"><input id="newNote" type="text" class="input span2"><button class="btn cancel"><i class="icon-remove"></i></button></div></li>');
         $('#newNote').focus();
     },
     addNote: function(e){
         var self = this;
         var note = $('#newNote', self.el).val();
-        if (e.keyCode == 27){
+        if (e.keyCode === 27){
             self.render();
             return;
         }
@@ -452,6 +450,9 @@ var HelpDesk = Backbone.View.extend({
         $('#displayOptions').val(self.displayOptions);
         $('#displaySearch').val(self.displaySearch);
         return self;
+    },
+    sortMe: function(e){
+        console.log($(e.srcElement).val());
     },
     setSearch: function(e){
         var self = this;

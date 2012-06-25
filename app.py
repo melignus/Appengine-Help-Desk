@@ -103,11 +103,11 @@ class Support_Ticket(db.Model):
     micro = db.StringProperty()
     
     submitted_on = db.DateTimeProperty(auto_now_add=True)
-    submitted_by = db.UserProperty()
+    submitted_by = db.StringProperty()
     
     closed = db.BooleanProperty()
     completed_on = db.DateTimeProperty()
-    completed_by = db.UserProperty()
+    completed_by = db.StringProperty()
     completed_meta = db.StringListProperty()
 
     assigned_to = db.StringProperty()
@@ -115,7 +115,7 @@ class Support_Ticket(db.Model):
 
     elevated = db.BooleanProperty()
     elevated_on = db.DateTimeProperty()
-    elevated_by = db.UserProperty()
+    elevated_by = db.StringProperty()
     elevated_reason = db.StringProperty()
 
     starred = db.BooleanProperty()
@@ -130,7 +130,7 @@ class Note(db.Model):
     message = db.StringProperty()
 
     submitted_on = db.DateTimeProperty(auto_now_add=True)
-    submitted_by = db.UserProperty()
+    submitted_by = db.StringProperty()
     assigned_to = db.StringProperty()
 
 def ticket_to_json(ticket):
@@ -141,15 +141,15 @@ def ticket_to_json(ticket):
             'macro': ticket.macro,
             'micro': ticket.micro,
             'submitted_on': str(ticket.submitted_on)[:16],
-            'submitted_by': str(ticket.submitted_by),
+            'submitted_by': ticket.submitted_by,
             'closed': ticket.closed,
             'completed_on': str(ticket.completed_on)[:16],
-            'completed_by': str(ticket.completed_by),
-            'assigned_to' : str(ticket.assigned_to),
+            'completed_by': ticket.completed_by,
+            'assigned_to' : ticket.assigned_to,
             'description' : ticket.description,
             'elevated': ticket.elevated,
             'elevated_on': str(ticket.elevated_on)[:16],
-            'elevated_by': str(ticket.elevated_by),
+            'elevated_by': ticket.elevated_by,
             'elevated_reason': ticket.elevated_reason,
             'starred': ticket.starred,
             'priority': ticket.priority,
@@ -165,27 +165,59 @@ def note_to_json(note):
     this_note = {
         'id': str(note.key().id()),
         'message': note.message,
-        'submitted_by': str(note.submitted_by),
+        'submitted_by': note.submitted_by,
         'submitted_on': str(note.submitted_on)[:16],
         'assigned_to': assigned_to,
         }
     return this_note
 
-def permissions(dbItem, user):
-    if user in ADMINS:
-        return True
-    else:
-        if dbItem.submitted_by == user or \
-                str(dbItem.assigned_to) == user or \
-                dbItem.assigned_to == None:
+def ticket_permissions(ticket, user, action):
+    if action == 'read':
+        if user in ADMINS:
+            return True
+        elif ticket.assigned_to == user:
+            return True
+        elif ticket.elevated and user in ETS:
+            return True
+        else:
+            return False
+    if action == 'update':
+        if user in ADMINS:
+            return True
+        elif ticket.assigned_to == user:
+            return True
+        elif ticket.elevated and user in ETS:
             return True
         else:
             return False
 
+def note_permissions(note, user, action):
+    if action == 'read':
+        if note.submitted_by == user:
+            return True
+        elif note.assigned_to == user:
+            return True
+        elif note.for_ticket.elevated and (user in ETS) and not note.assigned_to:
+            return True
+        else:
+            return False
+    elif action == 'delete':
+        if note.submitted_by == user:
+            return True
+        else:
+            return False
+    elif action == 'create':
+        if ticket_permissions(note, user, 'update'):
+            return True
+        else:
+            return False
+    else:
+        return False
+
 def get_my_tickets(user):
-    if str(user) in ADMINS:
+    if user in ADMINS:
         my_tickets = Support_Ticket.all()
-    elif str(user) in ETS:
+    elif user in ETS:
         my_tickets = Support_Ticket.gql(
                 "WHERE elevated = TRUE")
     else:
@@ -194,7 +226,7 @@ def get_my_tickets(user):
                 submitted_by=user)
         my_tickets.update(Support_Ticket.gql(
             "WHERE assigned_to = :assigned_to",
-            assigned_to=str(user)))
+            assigned_to=user))
     return my_tickets
 
 @app.route('/')
@@ -214,11 +246,7 @@ def home():
 
 @app.route('/new_ticket', methods=['POST', 'GET', 'PUT', 'DELETE'])
 def new_ticket():
-    if run_on_google:
-        logging.info(users.get_current_user())
-        this_user = str(users.get_current_user())+'@hbuhsd.edu'
-    else:
-        this_user = 'test@hbuhsd.edu'
+    this_user = str(users.get_current_user())
 
     if request.method == 'POST':
         logging.info(request.form)
@@ -236,7 +264,7 @@ def new_ticket():
                 macro=these_params['macro'],
                 micro=these_params['micro'],
                 description=these_params['description'],
-                submitted_by=users.get_current_user(),
+                submitted_by=str(users.get_current_user()),
                 assigned_to=set_assignment,
                 elevated=False,
                 closed=False,
@@ -259,20 +287,20 @@ def note(note_id):
     these_params = request.json
     if note_id == 'new' and request.method == 'POST':
         this_ticket = Support_Ticket.get_by_id(int(these_params['for_ticket']))
-        if (this_ticket.elevated and this_user in ETS) or permissions(this_ticket, this_user):
+        if note_permissions(this_ticket, this_user, 'create'):
             if 'assigned_to' not in these_params:
                 these_params['assigned_to'] = None
             Note(for_ticket=this_ticket,
                     message=these_params['message'],
                     assigned_to=these_params['assigned_to'],
-                    submitted_by=users.get_current_user()).put()
+                    submitted_by=str(users.get_current_user())).put()
             return JSON_OK
         else:
             return JSON_ERROR
 
     if request.method == 'GET':
         this_note = Note.get_by_id(int(note_id))
-        if permissions(this_note, this_user):
+        if note_permissions(this_note, this_user, 'read'):
             return Response(
                     response=json.dumps(
                     note_to_json(this_note)),
@@ -281,7 +309,7 @@ def note(note_id):
             return JSON_ERROR
     elif request.method == 'DELETE':
         this_note = Note.get_by_id(int(note_id))
-        if str(this_note.submitted_by) == this_user:
+        if note_permissions(this_note, this_user, 'delete'):
             this_note.delete()
             return JSON_OK
         else:
@@ -293,7 +321,7 @@ def notes(ticket_id):
     logging.info('notes request for ticket_id: %s' % int(ticket_id))
     this_ticket = Support_Ticket.get_by_id(int(ticket_id))
     these_notes = [note_to_json(note) for note in this_ticket.notes if
-            (permissions(note, this_user) or (permissions(note, this_user) and this_ticket.elevated and this_user in ETS))]
+            note_permissions(note, this_user, 'read')]
     return Response(
             response=json.dumps(these_notes),
             mimetype="application/json")
@@ -304,42 +332,59 @@ def ticket(ticket_id):
     this_user = str(users.get_current_user())
     if request.method == 'GET':
         this_ticket = Support_Ticket.get_by_id(int(ticket_id))
-        if permissions(this_ticket, this_user):
+        if ticket_permissions(this_ticket, this_user, 'read'):
             return Response(
                     response=json.dumps(ticket_to_json(this_ticket)),
                     mimetype="application/json")
     elif request.method == 'PUT':
         these_params = request.json
         this_ticket = Support_Ticket.get_by_id(int(ticket_id))
-        if permissions(this_ticket, this_user):
+        if ticket_permissions(this_ticket, this_user, 'update'):
 
-            # Handle ticket close
+            # Handle ticket close and reopen
             if not this_ticket.closed and these_params['closed']:
                 if not these_params['completed_meta']:
                     these_params['completed_meta'] = []
                 this_ticket.closed = True
                 this_ticket.completed_on = datetime.datetime.now()
-                this_ticket.completed_by = users.get_current_user()
+                this_ticket.completed_by = this_user
                 this_ticket.completed_meta = these_params['completed_meta']
+            elif this_ticket.closed and not these_params['closed']:
+                this_ticket.closed = False
 
-            # Handle ticket elevation
+            # Handle ticket elevation and deelevation
             if not this_ticket.elevated and these_params['elevated']:
                 if not these_params['elevated_reason']:
                     these_params['elevated_reason'] = ''
                 this_ticket.elevated = True
                 this_ticket.elevated_on = datetime.datetime.now()
-                this_ticket.elevated_by = users.get_current_user()
+                this_ticket.elevated_by = this_user
                 this_ticket.elevated_reason = these_params['elevated_reason']
+            elif this_ticket.elevated and not these_params['elevated']:
+                this_ticket.elevated = False
+
+            # Handle ticket reassignment
+            if this_ticket.assigned_to != these_params['assigned_to']:
+                new_assignment = these_params['assigned_to']
+                logging.info(new_assignment)
+                if new_assignment in NET_TECHS or \
+                        new_assignment in ETS or \
+                        new_assignment in ADMINS:
+                    this_ticket.assigned_to = new_assignment
+                else:
+                    return JSON_ERROR
 
             this_ticket.starred = these_params['starred']
             this_ticket.put()
             return JSON_OK
+        else:
+            return JSON_ERROR
     else:
         return JSON_ERROR
 
 @app.route('/tickets', methods=['GET'])
 def tickets():
-    this_user = users.get_current_user()
+    this_user = str(users.get_current_user())
     my_tickets = get_my_tickets(this_user)
     these_tickets = [ticket_to_json(ticket) for ticket in my_tickets]
 

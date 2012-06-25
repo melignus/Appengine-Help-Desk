@@ -12,3 +12,7 @@ handlers:
 - url: /.*
   script: app.py
   login: required
+
+error_handlers:
+- error_code: over_quota
+  file: /templates/quota_exceeded.html

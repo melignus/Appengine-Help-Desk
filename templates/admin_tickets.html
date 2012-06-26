@@ -2,6 +2,7 @@
 <html>
     <head>
         <title>HBUHSD Help Desk</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <script type="text/javascript" src="/static/js/jquery-1.7.2.min.js"></script>
         <script type="text/javascript" src="/static/js/jquery-ui-1.8.20.custom.min.js"></script>
         <script type="text/javascript" src="/static/js/bootstrap.min.js"></script>
@@ -85,25 +86,28 @@
             </div>
             <div class="span4">
                 <h3>Ticket: {{ticket.id}} For: {{ticket.submitted_by}}</h3>
-                <p id="reassign" class="sortme" value="{{ticket.assigned_to}}"><strong>Assigned To:</strong> {{ticket.assigned_to}}</p>
-                <p><strong>Site:</strong> {{ticket.site}}</p>
-                <p><strong>Submitted On:</strong> {{ticket.submitted_on}}</p>
-                <p><strong>User:</strong> {{ticket.user_type}}</p>
-                <p><strong>Equipment:</strong> {{ticket.type}}</p>
-                <p><strong>Room/Building:</strong> {{ticket.macro}}</p>
-                <p><strong>In Room:</strong> {{ticket.micro}}</p>
-                <p><strong>Description:</strong> {{ticket.description}}</p>
+                <div id="reassign" class="sortme" value="{{ticket.assigned_to}}"><strong>Assigned To:</strong> {{ticket.assigned_to}}</div>
+                <strong>Site:</strong> {{ticket.site}}<br/>
+                <strong>Submitted On:</strong> {{ticket.submitted_on}}<br/>
+                <strong>User:</strong> {{ticket.user_type}}<br/>
+                <strong>Equipment:</strong> {{ticket.type}}<br/>
+                <strong>Room/Building:</strong> {{ticket.macro}}<br/>
+                <strong>In Room:</strong> {{ticket.micro}}<br/>
+                <div id="inventory"><strong>Inventory:</strong> {{ticket.inventory}}</div>
+                <strong>Description:</strong> {{ticket.description}}<br/>
                 {{#if ticket.elevated}}
-                <p><strong>Elevated On:</strong> {{ticket.elevated_on}}</p>
-                <p><strong>Elevated By:</strong> {{ticket.elevated_by}}</p>
-                <p><strong>Reason for Elevation:</strong> {{ticket.elevated_reason}}</p>
-                <p><button id="deelevate" class="btn btn-primary">De-Elevate</button></p>
+                <strong>Elevated On:</strong> {{ticket.elevated_on}}<br/>
+                <strong>Elevated By:</strong> {{ticket.elevated_by}}<br/>
+                <strong>Reason for Elevation:</strong> {{ticket.elevated_reason}}<br/>
+                <button id="deelevate" class="btn btn-primary btn-mini">De-Elevate</button><br/>
                 {{else}}
                 {{/if}}
                 {{#if ticket.closed}}
-                <p><strong>Completed By:</strong> {{ticket.completed_by}}</p>
-                <p><strong>Completed On:</strong> {{ticket.completed_on}}</p>
-                <p><button id="reopen" class="btn btn-primary">Reopen</button></p>
+                <strong>Completed By:</strong> {{ticket.completed_by}}<br/>
+                <strong>Completed On:</strong> {{ticket.completed_on}}<br/>
+                <button id="reopen" class="btn btn-primary btn-mini">Reopen</button><br/>
+                {{else}}
+                <button id="prioritize" class="btn btn-mini">Prioritize</button>
                 {{/if}}
                 {{#if ticket.closed}}
                 {{else}}

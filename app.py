@@ -104,6 +104,7 @@ class Support_Ticket(db.Model):
     
     submitted_on = db.DateTimeProperty(auto_now_add=True)
     submitted_by = db.StringProperty()
+    submitted_ipaddress = db.StringProperty()
     
     closed = db.BooleanProperty()
     completed_on = db.DateTimeProperty()
@@ -112,6 +113,7 @@ class Support_Ticket(db.Model):
 
     assigned_to = db.StringProperty()
     description = db.StringProperty()
+    inventory = db.StringProperty()
 
     elevated = db.BooleanProperty()
     elevated_on = db.DateTimeProperty()
@@ -153,6 +155,7 @@ def ticket_to_json(ticket):
             'elevated_reason': ticket.elevated_reason,
             'starred': ticket.starred,
             'priority': ticket.priority,
+            'inventory': ticket.inventory,
             'id': str(ticket.key().id()),
             }
     return this_ticket
@@ -264,7 +267,9 @@ def new_ticket():
                 macro=these_params['macro'],
                 micro=these_params['micro'],
                 description=these_params['description'],
+                inventory=these_params['inventory'],
                 submitted_by=str(users.get_current_user()),
+                submitted_ipaddress=request.remote_addr,
                 assigned_to=set_assignment,
                 elevated=False,
                 closed=False,
@@ -349,6 +354,7 @@ def ticket(ticket_id):
                 this_ticket.completed_on = datetime.datetime.now()
                 this_ticket.completed_by = this_user
                 this_ticket.completed_meta = these_params['completed_meta']
+                this_ticket.priority = False
             elif this_ticket.closed and not these_params['closed']:
                 this_ticket.closed = False
 
@@ -364,9 +370,9 @@ def ticket(ticket_id):
                 this_ticket.elevated = False
 
             # Handle ticket reassignment
-            if this_ticket.assigned_to != these_params['assigned_to']:
+            if this_ticket.assigned_to != these_params['assigned_to'] and \
+                    this_user in ADMINS:
                 new_assignment = these_params['assigned_to']
-                logging.info(new_assignment)
                 if new_assignment in NET_TECHS or \
                         new_assignment in ETS or \
                         new_assignment in ADMINS:
@@ -374,7 +380,13 @@ def ticket(ticket_id):
                 else:
                     return JSON_ERROR
 
+            # Handle ticket inventory number change
+            if this_ticket.inventory != these_params['inventory']:
+                this_ticket.inventory = these_params['inventory']
+
             this_ticket.starred = these_params['starred']
+            if this_user in ADMINS:
+                this_ticket.priority = these_params['priority']
             this_ticket.put()
             return JSON_OK
         else:

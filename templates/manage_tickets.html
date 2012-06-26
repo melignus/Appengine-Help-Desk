@@ -90,6 +90,8 @@
                 <p><strong>Equipment:</strong> {{ticket.type}}</p>
                 <p><strong>Room/Building:</strong> {{ticket.macro}}</p>
                 <p><strong>In Room:</strong> {{ticket.micro}}</p>
+                <p id="inventory"><strong>Inventory:</strong> {{ticket.inventory}}</p>
+                <p><strong>Description:</strong> {{ticket.description}}</p>
                 {{#if ticket.elevated}}
                 <p><strong>Elevated On:</strong> {{ticket.elevated_on}}</p>
                 <p><strong>Elevated By:</strong> {{ticket.elevated_by}}</p>
@@ -100,7 +102,6 @@
                 <p><strong>Completed By:</strong> {{ticket.completed_by}}</p>
                 <p><strong>Completed On:</strong> {{ticket.completed_on}}</p>
                 {{/if}}
-                <p><strong>Description:</strong> {{ticket.description}}</p>
                 {{#if ticket.closed}}
                 {{else}}
                 <hr>

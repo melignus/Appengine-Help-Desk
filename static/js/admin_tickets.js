@@ -137,9 +137,23 @@ var Ticket = Backbone.Model.extend({
     reassign: function(assignTo){
         var self = this;
         self.save({
-            assigned_to: assignTo
+            assigned_to: assignTo,
         });
         self.fetch({wait: true});
+    },
+    inventory: function(changeTo){
+        var self = this;
+        self.save({
+            inventory: changeTo,
+        });
+        self.fetch({wait: true});
+    },
+    prioritize: function(){
+        var self = this;
+        self.save({
+            priority: !self.get("priority"),
+        });
+        console.log(self);
     },
 });
 
@@ -235,14 +249,17 @@ var SingleTicket = Backbone.View.extend({
         "dblclick #addNote": "getNote",
         "keypress #newNote": "addNote",
         "keypress #newAssignment": "setReassignment",
+        "keypress #newInventory": "setInventory",
         "dblclick .removeMe": "removeNote",
         "dblclick #reassign": "getReassignment",
+        "dblclick #inventory": "getInventory",
         "click #closeMe": "closeTicket",
         "click #elevateMe": "elevateTicket",
         "click #reopen": "reopenTicket",
         "click #deelevate": "deelevateTicket",
         "click .cancel": "render",
         "click .sortme": "sortMe",
+        "click #prioritize": "prioritize",
     },
     initialize: function(){
         var self = this;
@@ -292,6 +309,10 @@ var SingleTicket = Backbone.View.extend({
         });
         return self;
     },
+    prioritize: function(){
+        var self = this;
+        self.model.prioritize();
+    },
     sortMe: function(e){
         console.log($(e));
     },
@@ -313,10 +334,22 @@ var SingleTicket = Backbone.View.extend({
         var self = this;
         self.model.deelevate();
     },
-    removeInvite: function(){
+    getInventory: function(){
         var self = this;
-        var thisInvite = $(e.srcElement).attr('invite-id');
-        self.model.invites.removeInvite(thisInvite);
+        $('#inventory').html('<strong>Reassign inventory number:</strong><div class="input-append"><input id="newInventory" type="text" class="input span2"><button class="btn cancel"><i class="icon-remove"></i></button></div>');
+        $('#newInventory').focus();
+    },
+    setInventory: function(e){
+        var self = this;
+        var newNumber = $('#newInventory').val();
+        if (e.keyCode === 27){
+            self.render();
+            return;
+        }
+        if (!newNumber || e.keyCode !== 13){
+            return;
+        }
+        self.model.inventory(newNumber);
     },
     getReassignment: function(){
         var self = this;

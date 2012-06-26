@@ -63,6 +63,7 @@
             formData['macro'] = $('#ticketMacroLocation').val();
             formData['micro'] = $('#ticketMicroLocation').val();
             formData['description'] = $('#ticketDescription').val();
+            formData['inventory'] = $('#ticketInventoryNumber').val();
             console.log(formData);
             $.ajax({
                 type: 'POST',
@@ -149,6 +150,12 @@
             <label class="control-label" for="ticketMicroLocation"><strong>Where in Room:</strong></label>
             <div class="controls">
                 <input class="input" name="ticketMicroLocation" id="ticketMicroLocation">
+            </div>
+        </div>
+        <div class="control-group">
+            <label class="control-label" for="ticketInventoryNumber"><strong>Inventory Number:</strong></label>
+            <div class="controls">
+                <input class="input" name="ticketInventoryNumber" id="ticketInventoryNumber">
             </div>
         </div>
         <div class="control-group">

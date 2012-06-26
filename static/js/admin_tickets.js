@@ -195,7 +195,7 @@ var Notes = Backbone.Collection.extend({
                     message: note,
                 });
             } else {
-                var assignedTo = note.slice(0, note.indexOf(':'));
+                var assignedTo = note.slice(0, note.indexOf(':')); 
                 var thisMessage = note.slice(note.indexOf(':')+1, note.length);
                 var newNote = new Note({
                     for_ticket: self.ticketId,
@@ -205,7 +205,7 @@ var Notes = Backbone.Collection.extend({
             }
             console.log(newNote);
             newNote.save();
-            self.fetch();
+            self.fetch({wait: true});
         }
     },
 });

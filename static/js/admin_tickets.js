@@ -241,6 +241,28 @@ var Tickets = Backbone.Collection.extend({
     comparator:function(ticket){
         return [!ticket.get("priority"), !ticket.get("starred"), !ticket.get("closed")]
     },
+    parse: function(response){
+        for (var i=0;i<=response.length-1;i++){
+            if (!response[i].closed){
+                response[i].completed_on = false;
+                response[i].completed_by = false;
+            } else {
+                var fixedDate = new Date(response[i].completed_on.replace(/-/g,'/').replace(/T/,' ').replace(/\+/,' +')).toString();
+                response[i].completed_on = fixedDate.slice(0, fixedDate.indexOf('GMT')-4);
+            }
+            if (!response[i].elevated){
+                response[i].elevated_on = false;
+                response[i].elevated_by = false;
+            } else {
+                var fixedDate = new Date(response[i].elevated_on.replace(/-/g,'/').replace(/T/,' ').replace(/\+/,' +')).toString();
+                response[i].elevated_on = fixedDate.slice(0, fixedDate.indexOf('GMT')-4);
+            }
+            var fixedDate = new Date(response[i].submitted_on.replace(/-/g,'/').replace(/T/,' ').replace(/\+/,' +')).toString();
+            response[i].submitted_on = fixedDate.slice(0, fixedDate.indexOf('GMT')-4);
+            response[i].submitted_by = response[i].submitted_by.slice(0, response[i].submitted_by.indexOf('@'));
+        }
+        return response;
+    },
 });
 
 //single ticket view in window
@@ -536,7 +558,11 @@ var HelpDesk = Backbone.View.extend({
             }
             for (var i=0;i<=searchTerms.length-1;i++){
                 if (searchTerms[i].indexOf(':') == -1){
-                    //regex search for the term on the ticket.get("description")
+                    theseTickets = theseTickets.filter(function(ticket){
+                        if (ticket.get("description").match('.*'+searchTerms[i]+'.*')){
+                            return ticket;
+                        }
+                    });
                 } else {
                     var separaterIndex = searchTerms[i].indexOf(':');
                     var parameter = searchTerms[i].slice(0, separaterIndex);
@@ -578,6 +604,13 @@ var HelpDesk = Backbone.View.extend({
                                 return ticket.get("elevated");
                             });
                             break;
+                        case 'meta':
+                            theseTickets = theseTickets.filter(function(ticket){
+                                if (ticket.get("elevated") && ticket.get("elevated_reason").toLowerCase().match('.*'+argument.toLowerCase()+'.*')){
+                                    return ticket;
+                                }
+                            });
+                            break;
                     }
                 }
             }
@@ -589,3 +622,30 @@ var HelpDesk = Backbone.View.extend({
     },
 });
 
+var Shortcuts = Backbone.Router.extend({
+    initialize: function(options){
+        var self = this;
+        self.user_name = options.user_name;
+    },
+    routes: {
+        "ticket/:id": "singleTicket",
+        "*actions": "defaultRoute",
+    },
+    singleTicket: function(id){
+        var self = this;
+        if (!self.manageTickets){
+            self.defaultRoute();
+        }
+        $('#displaySearch').val('id:'+id);
+        var e = jQuery.Event("keypress");
+        e.keyCode = 13;
+        $('#displaySearch').trigger(e);
+    },
+    defaultRoute: function(actions){
+        var self = this;
+        self.manageTickets = new HelpDesk({
+            el: $('#layoutAppHeader'),
+            parameters: { user_name: self.user_name },
+        });
+    },
+});

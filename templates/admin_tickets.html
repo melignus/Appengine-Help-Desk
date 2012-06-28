@@ -25,7 +25,7 @@
 
         {% raw %}
         <script id="ticketListTemplate" type="text/x-handlebars-template">
-            <a href="#" {{#if ticket.closed}}style="color:darkgrey;"{{/if}}>
+            <a {{#if ticket.closed}}style="color:darkgrey;"{{/if}}>
                 <strong>#{{ticket.id}}</strong>
                 {{ticket.type}}
                 {{ticket.submitted_by}}
@@ -86,14 +86,14 @@
             </div>
             <div class="span4">
                 <h3>Ticket: {{ticket.id}} For: {{ticket.submitted_by}}</h3>
-                <div id="reassign" class="sortme" value="{{ticket.assigned_to}}"><strong>Assigned To:</strong> {{ticket.assigned_to}}</div>
+                <div id="reassign" class="sortme" value="{{ticket.assigned_to}}"><a><strong>Assigned To:</strong> {{ticket.assigned_to}}</a></div>
                 <strong>Site:</strong> {{ticket.site}}<br/>
                 <strong>Submitted On:</strong> {{ticket.submitted_on}}<br/>
                 <strong>User:</strong> {{ticket.user_type}}<br/>
                 <strong>Equipment:</strong> {{ticket.type}}<br/>
                 <strong>Room/Building:</strong> {{ticket.macro}}<br/>
                 <strong>In Room:</strong> {{ticket.micro}}<br/>
-                <div id="inventory"><strong>Inventory:</strong> {{ticket.inventory}}</div>
+                <div id="inventory"><a><strong>Inventory:</strong> {{ticket.inventory}}</a></div>
                 <strong>Description:</strong> {{ticket.description}}<br/>
                 {{#if ticket.elevated}}
                 <strong>Elevated On:</strong> {{ticket.elevated_on}}<br/>
@@ -148,10 +148,10 @@
 
         <script>
             $(document).ready(function(){
-                manageTickets = new HelpDesk({
-                    el: $('#layoutAppHeader'),
-                    parameters: { user_name: "{{page_params['user_name']}}" },
+                ticketShortcuts = new Shortcuts({
+                    user_name: "{{page_params['user_name']}}",
                 });
+                Backbone.history.start();
             });
         </script>
     </head>

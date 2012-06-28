@@ -119,6 +119,12 @@ var Ticket = Backbone.Model.extend({
             starred: !self.get("starred"),
         });
     },
+    toggleHold: function(){
+        var self = this;
+        self.save({
+            on_hold: !self.get("on_hold"),
+        });
+    },
 });
 
 //note model
@@ -203,7 +209,29 @@ var Tickets = Backbone.Collection.extend({
         return theseTickets.length;
     },
     comparator:function(ticket){
-        return [!ticket.get("priority"), !ticket.get("starred"), !ticket.get("closed")]
+        return [!ticket.get("priority"), !ticket.get("starred"), !ticket.get("closed"), ticket.get("on_hold")]
+    },
+    parse: function(response){
+        for (var i=0;i<=response.length-1;i++){
+            if (!response[i].closed){
+                response[i].completed_on = false;
+                response[i].completed_by = false;
+            } else {
+                var fixedDate = new Date(response[i].completed_on.replace(/-/g,'/').replace(/T/,' ').replace(/\+/,' +')).toString();
+                response[i].completed_on = fixedDate.slice(0, fixedDate.indexOf('GMT')-4);
+            }
+            if (!response[i].elevated){
+                response[i].elevated_on = false;
+                response[i].elevated_by = false;
+            } else {
+                var fixedDate = new Date(response[i].elevated_on.replace(/-/g,'/').replace(/T/,' ').replace(/\+/,' +')).toString();
+                response[i].elevated_on = fixedDate.slice(0, fixedDate.indexOf('GMT')-4);
+            }
+            var fixedDate = new Date(response[i].submitted_on.replace(/-/g,'/').replace(/T/,' ').replace(/\+/,' +')).toString();
+            response[i].submitted_on = fixedDate.slice(0, fixedDate.indexOf('GMT')-4);
+            response[i].submitted_by = response[i].submitted_by.slice(0, response[i].submitted_by.indexOf('@'));
+        }
+        return response;
     },
 });
 
@@ -211,7 +239,6 @@ var Tickets = Backbone.Collection.extend({
 var SingleTicket = Backbone.View.extend({
     events: {
         "dblclick #addNote": "getNote",
-        "dblclick #inviteUser": "getInvite",
         "keypress #newNote": "addNote",
         "dblclick .removeMe": "removeNote",
         "click #closeMe": "closeTicket",
@@ -275,29 +302,6 @@ var SingleTicket = Backbone.View.extend({
         var elevationMeta = $('#elevationMeta').val();
         self.model.elevate(elevationMeta);
     },
-    getInvite: function(){
-        var self = this;
-        $('#inviteUser', self.el).remove();
-        $('#ticketInvites', self.el).append('<li id="newInviteList"><input id="newInvite" type="text" class="input span2" /></li>');
-        $('#newInvite').focus();
-    },
-    addInvite: function(e){
-        var self = this;
-        var invite = $('#newInvite', self.el).val();
-        if (e.keyCode == 27){
-            self.render();
-            return;
-        }
-        if (!invite || e.keyCode !== 13){
-            return;
-        }
-        self.model.invites.addInvite(invite);
-    },
-    removeInvite: function(){
-        var self = this;
-        var thisInvite = $(e.srcElement).attr('invite-id');
-        self.model.invites.removeInvite(thisInvite);
-    },
     getNote: function(){
         var self = this;
         $('#addNote', self.el).remove();
@@ -330,6 +334,7 @@ var TicketView = Backbone.View.extend({
     events: {
         "click": "expandTicket",
         "click .favMe": "toggleStar",
+        "contextmenu .favMe": "toggleHold",
     },
     initialize: function(){
         var self = this;
@@ -339,7 +344,9 @@ var TicketView = Backbone.View.extend({
         var self = this;
         var starred = 'icon-star-empty';
         var thisTicket = self.model.attributes;
-        if (thisTicket.starred){
+        if (thisTicket.on_hold){
+            starred = 'icon-bookmark';
+        } else if (thisTicket.starred){
             starred = 'icon-star';
         }
         var source = $('#ticketListTemplate').html();
@@ -352,6 +359,11 @@ var TicketView = Backbone.View.extend({
         $(self.el).html(source);
         $('.chzn-select').chosen({allow_single_deselect:true});
         return self;
+    },
+    toggleHold: function(e){
+        e.preventDefault();
+        var self = this;
+        self.model.toggleHold();
     },
     toggleStar: function(){
         var self = this;
@@ -463,7 +475,11 @@ var HelpDesk = Backbone.View.extend({
             }
             for (var i=0;i<=searchTerms.length-1;i++){
                 if (searchTerms[i].indexOf(':') == -1){
-                    //regex search for the term on the ticket.get("description")
+                    theseTickets = theseTickets.filter(function(ticket){
+                        if (ticket.get("description").match('.*'+searchTerms[i]+'.*')){
+                            return ticket;
+                        }
+                    });
                 } else {
                     var separaterIndex = searchTerms[i].indexOf(':');
                     var parameter = searchTerms[i].slice(0, separaterIndex);
@@ -505,14 +521,48 @@ var HelpDesk = Backbone.View.extend({
                                 return ticket.get("elevated");
                             });
                             break;
+                        case 'meta':
+                            theseTickets = theseTickets.filter(function(ticket){
+                                if (ticket.elevated){
+                                    return ticket.get("elevated_reason").match(argument);
+                                }
+                            });
+                            break;
                     }
                 }
             }
         }
         theseTickets = _.sortBy(theseTickets, function(ticket){
-            return [!ticket.get("priority"), !ticket.get("starred"), ticket.get("closed")]
+            return [!ticket.get("priority"), !ticket.get("starred"), ticket.get("closed"), ticket.get("on_hold")]
         });
         theseTickets.forEach(self.addOne);
     },
 });
 
+var Shortcuts = Backbone.Router.extend({
+    initialize: function(options){
+        var self = this;
+        self.user_name = options.user_name;
+    },
+    routes: {
+        "ticket/:id": "singleTicket",
+        "*actions": "defaultRoute",
+    },
+    singleTicket: function(id){
+        var self = this;
+        if (!self.manageTickets){
+            self.defaultRoute();
+        }
+        $('#displaySearch').val('id:'+id);
+        var e = jQuery.Event("keypress");
+        e.keyCode = 13;
+        $('#displaySearch').trigger(e);
+    },
+    defaultRoute: function(actions){
+        var self = this;
+        self.manageTickets = new HelpDesk({
+            el: $('#layoutAppHeader'),
+            parameters: { user_name: self.user_name },
+        });
+    },
+});

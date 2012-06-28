@@ -1,4 +1,4 @@
-import re, os, inspect, sys, datetime
+import re, os, inspect, sys, datetime, urllib, urllib2
 from functools import wraps
 
 thisPath = os.path.dirname(inspect.getfile(inspect.currentframe()))+'/'
@@ -136,25 +136,33 @@ class Note(db.Model):
     assigned_to = db.StringProperty()
 
 def ticket_to_json(ticket):
+    def fix_time(time):
+        try:
+            time = time.isoformat()
+        except:
+            time = False
+        return time
+
     this_ticket = {
             'type': ticket.ticket_type,
             'user_type': ticket.user_type,
             'site': ticket.site,
             'macro': ticket.macro,
             'micro': ticket.micro,
-            'submitted_on': str(ticket.submitted_on)[:16],
+            'submitted_on': fix_time(ticket.submitted_on),#str(ticket.submitted_on)[:16],
             'submitted_by': ticket.submitted_by,
             'closed': ticket.closed,
-            'completed_on': str(ticket.completed_on)[:16],
+            'completed_on': fix_time(ticket.completed_on),#str(ticket.completed_on)[:16],
             'completed_by': ticket.completed_by,
             'assigned_to' : ticket.assigned_to,
             'description' : ticket.description,
             'elevated': ticket.elevated,
-            'elevated_on': str(ticket.elevated_on)[:16],
+            'elevated_on': fix_time(ticket.elevated_on),#str(ticket.elevated_on)[:16],
             'elevated_by': ticket.elevated_by,
             'elevated_reason': ticket.elevated_reason,
             'starred': ticket.starred,
             'priority': ticket.priority,
+            'on_hold': ticket.on_hold,
             'inventory': ticket.inventory,
             'id': str(ticket.key().id()),
             }
@@ -169,7 +177,7 @@ def note_to_json(note):
         'id': str(note.key().id()),
         'message': note.message,
         'submitted_by': note.submitted_by,
-        'submitted_on': str(note.submitted_on)[:16],
+        'submitted_on': note.submitted_on.isoformat(),#str(note.submitted_on)[:16],
         'assigned_to': assigned_to,
         }
     return this_note
@@ -237,6 +245,9 @@ def home():
     logging.info(users.get_current_user())
     this_user = str(users.get_current_user())
     page_params['user_name'] = this_user
+
+    if 'link' in request.args:
+        logging.info('Handle direct link...')
 
     if this_user in ADMINS:
         return render_template('admin_tickets.html',
@@ -385,6 +396,7 @@ def ticket(ticket_id):
                 this_ticket.inventory = these_params['inventory']
 
             this_ticket.starred = these_params['starred']
+            this_ticket.on_hold = these_params['on_hold']
             if this_user in ADMINS:
                 this_ticket.priority = these_params['priority']
             this_ticket.put()
@@ -406,7 +418,18 @@ def tickets():
 
 @app.route('/test', methods=['POST', 'GET', 'PUT', 'DELETE'])
 def test():
-    return jsonify({'message': 'OK'})
+    logging.info('json: %s' % request.json)
+    logging.info('form: %s' % request.form)
+    logging.info('args: %s' % request.args)
+    logging.info('request: %s' % request)
+#    if request.method == 'GET':
+#        url = 'https://accounts.google.com/o/oauth2/token'
+#        fields = {
+#                'code': request.args['code'],
+#                'client_id': '',
+#                'client_secret': '',
+#                'redirect_uri
+    return jsonify({'message': request.args['code']})
 
 @app.errorhandler(404)
 def page_not_found(error):

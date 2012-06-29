@@ -11,17 +11,13 @@ from flask import Flask, Response, redirect, \
         render_template, json, jsonify
 
 # Google App Engine Block
-try:
-    import logging
-    from google.appengine.api import \
-            mail, users
-    from google.appengine.ext.webapp.util import \
-            run_wsgi_app
-    from google.appengine.ext import \
-            db
-    run_on_google = True
-except:
-    run_on_google = False
+import logging
+from google.appengine.api import \
+        mail, users, channel
+from google.appengine.ext.webapp.util import \
+        run_wsgi_app
+from google.appengine.ext import \
+        db
 # End Google App Engine Block
 
 SITES = [
@@ -246,6 +242,9 @@ def home():
     this_user = str(users.get_current_user())
     page_params['user_name'] = this_user
 
+    token = channel.create_channel(this_user)
+    page_params['token'] = token
+
     if 'link' in request.args:
         logging.info('Handle direct link...')
 
@@ -295,6 +294,12 @@ def new_ticket():
     page_params['title'] = 'New Ticket'
     page_params['message'] = \
             'please fill all fields to submit a new support ticket'
+
+    try:
+        channel.send_message('test@example.com', json.dumps({'Ok'}))
+    except:
+        logging.info('send failed...')
+        pass
     return render_template('new_ticket.html', page_params=page_params)
 
 @app.route('/note/<note_id>', methods=['POST', 'GET', 'PUT', 'DELETE'])
@@ -422,14 +427,23 @@ def test():
     logging.info('form: %s' % request.form)
     logging.info('args: %s' % request.args)
     logging.info('request: %s' % request)
-#    if request.method == 'GET':
-#        url = 'https://accounts.google.com/o/oauth2/token'
-#        fields = {
-#                'code': request.args['code'],
-#                'client_id': '',
-#                'client_secret': '',
-#                'redirect_uri
     return jsonify({'message': request.args['code']})
+
+@app.route('/test2', methods=['POST', 'GET', 'PUT', 'DELETE'])
+def test2():
+    logging.info('json: %s' % request.json)
+    logging.info('form: %s' % request.form)
+    logging.info('args: %s' % request.args)
+    logging.info('request: %s' % request)
+    return jsonify({'message': request.args})
+
+@app.route('/test3', methods=['POST', 'GET', 'PUT', 'DELETE'])
+def test3():
+    try:
+        channel.send_message('test@example.com', json.dumps({'message': 'Ok'}))
+    except:
+        return jsonify({'message': 'Error'})
+    return jsonify({'message': 'Ok'})
 
 @app.errorhandler(404)
 def page_not_found(error):
@@ -446,11 +460,4 @@ def http_forbidden(error):
     return render_template('403.html', page_params=page_params)
 
 if __name__ == "__main__":
-    if run_on_google == False:
-        app.run(
-                debug=True,
-                host='0.0.0.0',
-                port=5000,
-                )
-    else:
-        run_wsgi_app(app)
+    run_wsgi_app(app)

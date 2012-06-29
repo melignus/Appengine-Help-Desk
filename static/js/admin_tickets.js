@@ -477,12 +477,14 @@ var HelpDesk = Backbone.View.extend({
     },
     initialize: function(options){
         var self = this;
+
         self.userName = options.parameters.user_name;
         self.displayOptions = 'Open';
         self.displaySearch = '';
         
         self.tickets.bind('all', self.render, self);
         self.tickets.fetch();
+
         self.render();
     },
     render: function(){
@@ -626,6 +628,7 @@ var Shortcuts = Backbone.Router.extend({
     initialize: function(options){
         var self = this;
         self.user_name = options.user_name;
+        self.token = options.token;
     },
     routes: {
         "ticket/:id": "singleTicket",
@@ -647,5 +650,8 @@ var Shortcuts = Backbone.Router.extend({
             el: $('#layoutAppHeader'),
             parameters: { user_name: self.user_name },
         });
+        channel = new goog.appengine.Channel(self.token);
+        socket = channel.open();
+        socket.onmessage = self.manageTickets.tickets.fetch;
     },
 });

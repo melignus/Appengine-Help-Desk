@@ -229,11 +229,8 @@ def get_my_tickets(user):
                 "WHERE elevated = TRUE")
     else:
         my_tickets = Support_Ticket.gql(
-                "WHERE submitted_by = :submitted_by",
-                submitted_by=user)
-        my_tickets.update(Support_Ticket.gql(
-            "WHERE assigned_to = :assigned_to",
-            assigned_to=user))
+                "WHERE assigned_to = :assigned_to",
+                assigned_to=user)
     return my_tickets
 
 @app.route('/')
@@ -251,7 +248,7 @@ def home():
     if this_user in ADMINS:
         return render_template('admin_tickets.html',
                 page_params=page_params)
-    elif (this_user in NET_TECHS) or (this_user in ETS):
+    elif (this_user in [NET_TECHS[k] for k in NET_TECHS]) or (this_user in ETS):
         return render_template('manage_tickets.html', 
                 page_params=page_params)
     else:

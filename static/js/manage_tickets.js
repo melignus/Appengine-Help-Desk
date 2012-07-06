@@ -125,6 +125,31 @@ var Ticket = Backbone.Model.extend({
             on_hold: !self.get("on_hold"),
         });
     },
+    parse: function(response){
+        if (!response.closed){
+            response.completed_on = false;
+            response.completed_by = false;
+        } else {
+            var fixedDate = new Date(response.completed_on.replace(/-/g,'/').replace(/T/,' ').replace(/\+/,' +')).toString();
+            response.completed_on = fixedDate.slice(0, fixedDate.indexOf('GMT')-4);
+        }
+        if (!response.elevated){
+            response.elevated_on = false;
+            response.elevated_by = false;
+        } else {
+            var fixedDate = new Date(response.elevated_on.replace(/-/g,'/').replace(/T/,' ').replace(/\+/,' +')).toString();
+            response.elevated_on = fixedDate.slice(0, fixedDate.indexOf('GMT')-4);
+        }
+        if (response.submitted_on){
+            var fixedDate = new Date(response.submitted_on.replace(/-/g,'/').replace(/T/,' ').replace(/\+/,' +')).toString();
+            response.submitted_on = fixedDate.slice(0, fixedDate.indexOf('GMT')-4);
+        }
+        if (response.submitted_by && response.submitted_by.indexOf('@') != -1){
+            response.submitted_by = response.submitted_by.slice(0, response.submitted_by.indexOf('@'));
+        }
+
+        return response;
+    },
 });
 
 //note model
@@ -210,28 +235,6 @@ var Tickets = Backbone.Collection.extend({
     },
     comparator:function(ticket){
         return [!ticket.get("priority"), !ticket.get("starred"), !ticket.get("closed"), ticket.get("on_hold")]
-    },
-    parse: function(response){
-        for (var i=0;i<=response.length-1;i++){
-            if (!response[i].closed){
-                response[i].completed_on = false;
-                response[i].completed_by = false;
-            } else {
-                var fixedDate = new Date(response[i].completed_on.replace(/-/g,'/').replace(/T/,' ').replace(/\+/,' +')).toString();
-                response[i].completed_on = fixedDate.slice(0, fixedDate.indexOf('GMT')-4);
-            }
-            if (!response[i].elevated){
-                response[i].elevated_on = false;
-                response[i].elevated_by = false;
-            } else {
-                var fixedDate = new Date(response[i].elevated_on.replace(/-/g,'/').replace(/T/,' ').replace(/\+/,' +')).toString();
-                response[i].elevated_on = fixedDate.slice(0, fixedDate.indexOf('GMT')-4);
-            }
-            var fixedDate = new Date(response[i].submitted_on.replace(/-/g,'/').replace(/T/,' ').replace(/\+/,' +')).toString();
-            response[i].submitted_on = fixedDate.slice(0, fixedDate.indexOf('GMT')-4);
-            response[i].submitted_by = response[i].submitted_by.slice(0, response[i].submitted_by.indexOf('@'));
-        }
-        return response;
     },
 });
 

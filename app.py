@@ -55,7 +55,6 @@ NET_TECHS = {
 IS_HELP = [
         'wbeen@hbuhsd.edu',
         'nbuihner@hbuhsd.edu',
-        'wmiller@hbuhsd.edu',
         'mford@hbuhsd.edu',
         'mratanapratum@hbuhsd.edu',
         'dhoang@hbuhsd.edu',
@@ -67,7 +66,6 @@ IS_HELP = [
 ADMINS = [
         'nbuihner@hbuhsd.edu',
         'mford@hbuhsd.edu',
-        'wmiller@hbuhsd.edu',
         'test@example.com',
         #'test1@example.com',
         #'test2@example.com',
@@ -90,6 +88,16 @@ JSON_OK = Response(
 app = Flask(__name__)
 
 page_params = {}
+
+class User(db.Model):
+    firstname = db.StringProperty()
+    lastname = db.StringProperty()
+    email = db.StringProperty()
+    admin = db.BooleanProperty()
+    ets = db.BooleanProperty()
+    nettech = db.BooleanProperty()
+    last_login = db.DateTimeProperty()
+    super_admin = db.BooleanProperty()
 
 class Support_Ticket(db.Model):
     ticket_type = db.StringProperty()
@@ -131,29 +139,29 @@ class Note(db.Model):
     submitted_by = db.StringProperty()
     assigned_to = db.StringProperty()
 
-def ticket_to_json(ticket):
-    def fix_time(time):
-        try:
-            time = time.isoformat()
-        except:
-            time = False
-        return time
+def fix_time(time):
+    try:
+        time = time.isoformat()
+    except:
+        time = False
+    return time
 
+def ticket_to_json(ticket):
     this_ticket = {
             'type': ticket.ticket_type,
             'user_type': ticket.user_type,
             'site': ticket.site,
             'macro': ticket.macro,
             'micro': ticket.micro,
-            'submitted_on': fix_time(ticket.submitted_on),#str(ticket.submitted_on)[:16],
+            'submitted_on': fix_time(ticket.submitted_on),
             'submitted_by': ticket.submitted_by,
             'closed': ticket.closed,
-            'completed_on': fix_time(ticket.completed_on),#str(ticket.completed_on)[:16],
+            'completed_on': fix_time(ticket.completed_on),
             'completed_by': ticket.completed_by,
             'assigned_to' : ticket.assigned_to,
             'description' : ticket.description,
             'elevated': ticket.elevated,
-            'elevated_on': fix_time(ticket.elevated_on),#str(ticket.elevated_on)[:16],
+            'elevated_on': fix_time(ticket.elevated_on),
             'elevated_by': ticket.elevated_by,
             'elevated_reason': ticket.elevated_reason,
             'starred': ticket.starred,
@@ -173,10 +181,46 @@ def note_to_json(note):
         'id': str(note.key().id()),
         'message': note.message,
         'submitted_by': note.submitted_by,
-        'submitted_on': note.submitted_on.isoformat(),#str(note.submitted_on)[:16],
+        'submitted_on': note.submitted_on.isoformat(),
         'assigned_to': assigned_to,
         }
     return this_note
+
+def user_to_json(user):
+    this_user = {
+            'id': str(user.key().id()),
+            'firstname': user.firstname,
+            'lastname': user.lastname,
+            'email': user.email,
+            'last_login': fix_time(user.last_login),
+            'ets': user.ets,
+            'nettech': user.nettech,
+            'admin': user.admin,
+            'super_admin': user.super_admin,
+            }
+    return this_user
+
+#TODO add support for action and fix the rest of the permissions settings
+def admin_permissions(user, action):
+    if action == 'read':
+        this_query = User.gql("WHERE email = :user", user=user)
+        if len([user for user in this_query]):
+            this_user = this_query[0]
+            if this_user.admin or this_user.super_admin:
+                return True
+    if action == 'update':
+        this_query = User.gql("WHERE email = :user", user=user)
+        if len([user for user in this_query]):
+            this_user = this_query[0]
+            if this_user.admin or this_user.super_admin:
+                return True
+    if action == 'super_admin':
+        this_query = User.gql("WHERE email = :user", user=user)
+        if len([user for user in this_query]):
+            this_user = this_query[0]
+            if this_user.super_admin:
+                return True
+    return False
 
 def ticket_permissions(ticket, user, action):
     if action == 'read':
@@ -235,7 +279,6 @@ def get_my_tickets(user):
 
 @app.route('/')
 def home():
-    logging.info(users.get_current_user())
     this_user = str(users.get_current_user())
     page_params['user_name'] = this_user
 
@@ -253,6 +296,33 @@ def home():
                 page_params=page_params)
     else:
         return abort(403)
+
+@app.route('/admin', methods=['POST', 'GET'])
+def admin():
+    this_user = str(users.get_current_user())
+    
+    if 'GET' in request.method:
+        first_time = User.gql("WHERE super_admin = TRUE")
+        if not [item for item in first_time]:
+            return render_template('first_time.html', page_params=page_params)
+        else:
+            user = User.gql(
+                    "WHERE super_admin = TRUE AND email = :user", user=this_user)
+            if user:
+                return render_template('admin_panel.html', page_params=page_params)
+            else:
+                return abort(403)
+    elif 'POST' in request.method:
+        logging.info(request.form)
+        these_params = request.form
+        super_admin = User(
+                first_name=these_params['first_name'],
+                last_name=these_params['last_name'],
+                email=these_params['email'],
+                super_admin=True,
+                )
+        super_admin.put()
+        return url_for('/admin')
 
 @app.route('/new_ticket', methods=['POST', 'GET', 'PUT', 'DELETE'])
 def new_ticket():
@@ -292,12 +362,67 @@ def new_ticket():
     page_params['message'] = \
             'please fill all fields to submit a new support ticket'
 
-    try:
-        channel.send_message('test@example.com', json.dumps({'Ok'}))
-    except:
-        logging.info('send failed...')
-        pass
     return render_template('new_ticket.html', page_params=page_params)
+
+@app.route('/user/<user_id>', methods=['POST', 'GET', 'PUT', 'DELETE'])
+def single_user(user_id):
+    these_params = request.json
+    this_user = str(users.get_current_user())
+    if request.method == 'GET':
+        if admin_permissions(this_user, 'read'):
+            user = User.get_by_id(int(user_id))
+            if user:
+                return Response(
+                        response=json.dumps(user_to_json(user)),
+                        mimetype="application/json")
+    elif request.method == 'PUT':
+        if admin_permissions(this_user, 'update'):
+            user = User.get_by_id(int(user_id))
+            if this_query:
+                if these_params['firstname'] != user.firstname:
+                    user.firstname = these_params['firstname']
+                if these_params['lastname'] != user.lastname:
+                    user.lastname = these_params['lastname']
+                if these_params['email'] != user.email:
+                    user.email = these_params['email']
+                if these_params['ets'] != user.ets:
+                    user.ets = these_params['ets']
+                if these_params['nettech'] != user.nettech:
+                    user.nettech = these_params['nettech']
+                if these_params['admin'] != user.admin and admin_permissions(this_user, 'super_admin'):
+                    user.admin = these_params['admin']
+                user.put()
+                return JSON_OK
+    elif request.method == 'DELETE':
+        if admin_permissions(this_user, 'update'):
+            user = User.get_by_id(int(user_id))
+            if user:
+                this_query.delete()
+                return JSON_OK
+    elif user_id == 'new' and request.method == 'POST':
+        if admin_permissions(this_user, 'update'):
+            new_user = User(
+                    email=these_params['email'],
+                    firstname=these_params['firstname'],
+                    lastname=these_params['lastname'],
+                    admin=these_params['admin'],
+                    ets=these_params['ets'],
+                    nettech=these_params['nettech'],
+                    )
+            new_user.put()
+            return JSON_OK
+    return JSON_ERROR
+
+@app.route('/users', methods=['GET'])
+def all_users():
+    this_user = str(users.get_current_user())
+    if admin_permissions(this_user, 'read'):
+        this_query = User.gql("WHERE email != :user", user=this_user)
+        return Response(
+            response=json.dumps([user_to_json(user) for user in this_query]),
+            mimetype="application/json")
+    else:
+        return JSON_ERROR
 
 @app.route('/note/<note_id>', methods=['POST', 'GET', 'PUT', 'DELETE'])
 def note(note_id):
@@ -305,6 +430,8 @@ def note(note_id):
     these_params = request.json
     if note_id == 'new' and request.method == 'POST':
         this_ticket = Support_Ticket.get_by_id(int(these_params['for_ticket']))
+        if not this_ticket:
+            return JSON_ERROR
         if note_permissions(this_ticket, this_user, 'create'):
             if 'assigned_to' not in these_params:
                 these_params['assigned_to'] = None
@@ -318,6 +445,8 @@ def note(note_id):
 
     if request.method == 'GET':
         this_note = Note.get_by_id(int(note_id))
+        if not this_note:
+            return JSON_ERROR
         if note_permissions(this_note, this_user, 'read'):
             return Response(
                     response=json.dumps(
@@ -327,6 +456,8 @@ def note(note_id):
             return JSON_ERROR
     elif request.method == 'DELETE':
         this_note = Note.get_by_id(int(note_id))
+        if this_note:
+            return JSON_ERROR
         if note_permissions(this_note, this_user, 'delete'):
             this_note.delete()
             return JSON_OK
@@ -338,6 +469,8 @@ def notes(ticket_id):
     this_user = str(users.get_current_user())
     logging.info('notes request for ticket_id: %s' % int(ticket_id))
     this_ticket = Support_Ticket.get_by_id(int(ticket_id))
+    if not this_ticket:
+        return JSON_ERROR
     these_notes = [note_to_json(note) for note in this_ticket.notes if
             note_permissions(note, this_user, 'read')]
     return Response(
@@ -350,6 +483,8 @@ def ticket(ticket_id):
     this_user = str(users.get_current_user())
     if request.method == 'GET':
         this_ticket = Support_Ticket.get_by_id(int(ticket_id))
+        if not this_ticket:
+            return JSON_ERROR
         if ticket_permissions(this_ticket, this_user, 'read'):
             return Response(
                     response=json.dumps(ticket_to_json(this_ticket)),
@@ -357,6 +492,8 @@ def ticket(ticket_id):
     elif request.method == 'PUT':
         these_params = request.json
         this_ticket = Support_Ticket.get_by_id(int(ticket_id))
+        if not this_ticket:
+            return JSON_ERROR
         if ticket_permissions(this_ticket, this_user, 'update'):
 
             # Handle ticket close and reopen

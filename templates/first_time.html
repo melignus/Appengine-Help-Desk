@@ -44,15 +44,18 @@
                         email = $('#email').val();
                         if (firstName !== '' && lastName !== '' && email.indexOf('@') !== -1){
                             var formData = {
-                                'first_name': firstName,
-                                'last_name': lastName,
+                                'firstname': firstName,
+                                'lastname': lastName,
                                 'email': email,
                             }
                             $.ajax({
-                                url: 'admin',
+                                url: '/admin',
                                 type: 'POST',
                                 data: formData,
                                 dataType: 'json',
+                                success: function(){
+                                    document.location.href="/admin";
+                                },
                             });
                         } else {
                             event.preventDefault();
@@ -94,7 +97,7 @@
                             <label class="control-label" for="submitOk">Confirm</label>
                             <div class="controls">
                                 <input type="checkbox" class="checkbox" id="submitOk"></input>
-                                <button href="#" style="margin-left:5px;" class="btn btn-primary" id="submit" disabled>Submit</button>
+                                <a style="margin-left:5px;" class="btn btn-primary" id="submit" disabled>Submit</a>
                             </div>
                         </div>
                     </form>

@@ -25,146 +25,88 @@
 
         {% raw %}
         <script id="userListTemplate" type="text/x-handlebars-template">
-            <ul id="userList" style="list-style-type:none;">
+            <table class="table-striped table-condensed" style="width:100%;" id="userList">
+                <thead>
+                    <th>First Name</th>
+                    <th>Last Name</th>
+                    <th>Email</th>
+                    <th>Site(s)</th>
+                    <th>ETS</th>
+                    <th>NetTech</th>
+                    <th>Admin</th>
+                    <th>Super Admin</th>
+                    <th>Last Login</th>
+                </thead>
+                <tbody>
                 {{#each users}}
-                <li>{{this.attributes.firstname}} {{this.attributes.lastname}} {{this.attributes.email}} {{this.attributes.ets}} {{this.attributes.nettech}} {{this.attributes.admin}} {{this.attributes.super_admin}}</li>
-                {{/each}}
-                <li id="addUser"><h6>New User</h6></li>
-            </ul>
+                <tr align="center" {{#if this.attributes.super_admin}} {{else}}class="user"{{/if}} user-id="{{this.attributes.id}}">
+                        <td align="center">{{this.attributes.firstname}}</td>
+                        <td align="center">{{this.attributes.lastname}}</td>
+                        <td align="center">{{this.attributes.email}}</td>
+                        <td align="center">{{#each this.attributes.sites}}{{this}} {{/each}}</td>
+                        <td align="center">{{#if this.attributes.ets}}<i class="icon-ok etsStatus"></i>{{/if}}</td>
+                        <td align="center">{{#if this.attributes.nettech}}<i class="icon-ok nettechStatus"></i>{{/if}}</td>
+                        <td align="center">{{#if this.attributes.admin}}<i class="icon-ok adminStatus"></i>{{/if}}</td>
+                        <td align="center">{{#if this.attributes.super_admin}}<i class="icon-ok super_adminStatus"></i>{{/if}}</td>
+                        <td align="center">{{#if this.attributes.last_login}}{{this.attributes.last_login}}{{else}}Never{{/if}}</td>
+                    </tr>
+                    {{/each}}
+                    <tr align="center" id="addUser"><td><h6>New User</td></h6><td/><td/><td/><td/><td/><td/><td/><td/></tr>
+                </tbody>
+            </table>
         </script>
 
         <script id="newUserTemplate" type="text/x-handlebars-template">
-            <li id="newUser">
+            <tr align="center" id="newUser">
                 <form class="form-inline form-horizontal">
-                    <label>First Name: <input id="firstname" class="input-small"></input></label>
-                    <label>Last Name: <input id="lastname" class="input-small"></input></label>
-                    <label>Email: <input id="email" class="input-small"></input></label>
-                    <label>NetTech: <input id="nettech" type="checkbox"></input></label>
-                    <label>ETS: <input id="ets" type="checkbox"></input></label>
-                    <label>Admin: <input id="admin" type="checkbox"></input></label>
-                    <label>Site: 
-                        <select>
-                            <option>Option</option>
+                    <td><input id="firstname" class="input-small" placeholder="First Name"></input></td>
+                    <td><input id="lastname" class="input-small" placeholder="Last Name"></input></td>
+                    <td><input id="email" class="input-small" placeholder="Email"></input></td>
+                    <td>
+                        <select id="sites" data-placeholder="Assigned Sites..." multiple class="chzn-select span3">
+                            {{#each sites}}
+                                <option value="{{this}}">{{this}}</option>
+                            {{/each}}
                         </select>
-                    </label>
-                    <i id="confirmNewUser" class="icon-ok"></i>
-                    <i id="cancelNewUser" class="icon-remove"></i>
+                    </td>
+                    <td><input id="ets" type="checkbox"></input></td>
+                    <td><input id="nettech" type="checkbox"></input></td>
+                    <td><input id="admin" type="checkbox"></input></td>
+                    <td></td>
+                    <td>
+                        <i id="confirmNewUser" class="icon-ok"></i>
+                        <i id="cancelNewUser" class="icon-remove"></i>
+                    </td>
                 </form>
-            </li>
+            </tr>
+        </script>
+
+        <script id="editUserTemplate" type="text/x-handlebars-template">
+            <form class="form-inline form-horizontal">
+                <td><input id="firstname" class="input-small" placeholder="First Name" value="{{user.attributes.firstname}}"></input></td>
+                <td><input id="lastname" class="input-small" placeholder="Last Name" value="{{user.attributes.lastname}}"></input></td>
+                <td><input id="email" class="input-small" placeholder="Email" value="{{user.attributes.email}}"></input></td>
+                <td>
+                    <select id="sites" data-placeholder="Assigned Sites..." multiple class="chzn-select span3">
+                        {{#each sites}}
+                        <option value="{{this.name}}" {{#if this.selected}}selected{{/if}}>{{this.name}}</option>
+                        {{/each}}
+                    </select>
+                </td>
+                <td><input id="ets" type="checkbox" {{#if user.attributes.ets}}checked{{/if}}></input></td>
+                <td><input id="nettech" type="checkbox" {{#if user.attributes.nettech}}checked{{/if}}></input></td>
+                <td><input id="admin" type="checkbox" {{#if user.attributes.admin}}checked{{/if}}></input></td>
+                <td></td>
+                <td>
+                    <i id="confirmEditUser" class="icon-ok"></i>
+                    <i id="cancelEditUser" class="icon-remove"></i>
+                    <i style="margin-left:10px;" id="deleteUser" class="icon-trash"></i>
+                </td>
+            </form>
         </script>
         {% endraw %}
 
         <script>
-            function Checked(e){
-                if (e.attr('checked')){
-                    return true;
-                } else {
-                    return false;
-                }
-            }
-
-            // single user model
-            var User = Backbone.Model.extend({
-                urlRoot: function(){
-                    var self = this;
-                    if (self.get("id")){
-                        return '/user';
-                    } else {
-                        return '/user/'+'new';
-                    }
-                },
-                initialize: function(){
-                },
-            });
-
-            // users collection
-            var Users = Backbone.Collection.extend({
-                model: User,
-                url: "/users",
-                initialize: function(){
-                },
-            });
-
-            // main app view
-            var AdminPanel = Backbone.View.extend({
-                users: new Users(),
-                events: {
-                    "click .adminMe": "adminMe",
-                    "click .etsMe": "etsMe",
-                    "click .nettechMe": "nettechMe",
-                    "click #cancelNewUser": "render",
-                    "dblclick #addUser": "getUser",
-                    "keypress #newUser": "addUser",
-                    "click #confirmNewUser": "addUser",
-                },
-                initialize: function(){
-                    var self = this;
-
-                    self.users.bind('all', self.render, self);
-                    self.users.fetch();
-                    self.render();
-                },
-                render: function(){
-                    var self = this;
-                    var source = $('#userListTemplate').html();
-                    var template = Handlebars.compile(source);
-                    var context = {
-                        users: self.users.models,
-                    };
-                    var source = template(context);
-                    $(self.el).html(source);
-                    return self;
-                },
-                getUser: function(){
-                    var self = this;
-                    $('#addUser', self.el).remove();
-                    var source = $('#newUserTemplate').html();
-                    var template = Handlebars.compile(source);
-                    var source = template();
-                    $('#userList', self.el).append(source);
-                    $('#newUser').focus();
-                },
-                addUser: function(e){
-                    console.log(e);
-                    var self = this;
-                    var firstname = $('#firstname', self.el).val();
-                    var lastname = $('#lastname', self.el).val();
-                    var email = $('#email', self.el).val();
-                    var nettech = Checked($('#nettech', self.el));
-                    var admin = Checked($('#admin', self.el));
-                    var ets = Checked($('#ets', self.el));
-                    var informationSet = (firstname !== '' && lastname !== '' && email.indexOf('@') !== -1);
-                    var permissionsSet = (admin || ets || nettech);
-                    if (e.keyCode === 27){
-                        self.render();
-                        return;
-                    }
-                    if (e.type !== "click" &&(!informationSet || !permissionsSet || e.keyCode !== 13)){
-                        return;
-                    }
-                    var newUser = new User({
-                        'firstname': firstname,
-                        'lastname': lastname,
-                        'email': email,
-                        'nettech': nettech,
-                        'admin': admin,
-                        'ets': ets,
-                    });
-                    newUser.save();
-                    self.users.fetch();
-                    self.render();
-                },
-                adminMe: function(e){
-                    console.log(e);
-                },
-                etsMe: function(e){
-                    console.log(e);
-                },
-                nettechMe: function(e){
-                    console.log(e);
-                },
-            });
-
             $(document).ready(function(){
                 adminPanel = new AdminPanel({
                     el: $("#mainUserList"),
@@ -176,7 +118,7 @@
         <div class="container" style="margin-top:50px;">
             <div id="layoutAppHeader" class="row" style="border-radius:15px;border-bottom:10px solid #08c;border-top:10px solid #08c;">
                 <div id="titleBlock" class="span8">
-                    <h3>Admin Panel</h3>
+                    <h3>Admin Panel: {{page_params['user_name']}}</h3>
                     <h6>From here you can add, remove, and modify users and the permissions that they have to the help desk application.</h6>
                 </div>
             </div>

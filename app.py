@@ -98,6 +98,7 @@ class User(db.Model):
     nettech = db.BooleanProperty()
     last_login = db.DateTimeProperty()
     super_admin = db.BooleanProperty()
+    sites = db.StringListProperty()
 
 class Support_Ticket(db.Model):
     ticket_type = db.StringProperty()
@@ -197,84 +198,84 @@ def user_to_json(user):
             'nettech': user.nettech,
             'admin': user.admin,
             'super_admin': user.super_admin,
+            'sites': user.sites,
             }
     return this_user
 
-#TODO add support for action and fix the rest of the permissions settings
 def admin_permissions(user, action):
-    if action == 'read':
-        this_query = User.gql("WHERE email = :user", user=user)
-        if len([user for user in this_query]):
-            this_user = this_query[0]
+    this_query = User.gql("WHERE email = :user", user=user)
+    if len([user for user in this_query]):
+        this_user = this_query[0]
+        if action == 'read':
             if this_user.admin or this_user.super_admin:
                 return True
-    if action == 'update':
-        this_query = User.gql("WHERE email = :user", user=user)
-        if len([user for user in this_query]):
-            this_user = this_query[0]
+        if action == 'update':
             if this_user.admin or this_user.super_admin:
                 return True
-    if action == 'super_admin':
-        this_query = User.gql("WHERE email = :user", user=user)
-        if len([user for user in this_query]):
-            this_user = this_query[0]
+        if action == 'super_admin':
             if this_user.super_admin:
                 return True
     return False
 
 def ticket_permissions(ticket, user, action):
-    if action == 'read':
-        if user in ADMINS:
-            return True
-        elif ticket.assigned_to == user:
-            return True
-        elif ticket.elevated and user in ETS:
-            return True
-        else:
-            return False
-    if action == 'update':
-        if user in ADMINS:
-            return True
-        elif ticket.assigned_to == user:
-            return True
-        elif ticket.elevated and user in ETS:
-            return True
-        else:
-            return False
+    this_query = User.gql("WHERE email = :user", user=user)
+    if len([user for user in this_query]):
+        this_user = this_query[0]
+        if action == 'read':
+            if this_user.admin or this_user.super_admin:
+                return True
+            elif ticket.assigned_to == this_user.email:
+                return True
+            elif ticket.elevated and this_user.ets:
+                return True
+        if action == 'update':
+            if this_user.admin or this_user.super_admin:
+                return True
+            elif ticket.assigned_to == this_user.email:
+                return True
+            elif ticket.elevated and this_user.ets:
+                return True
+    return False
 
 def note_permissions(note, user, action):
-    if action == 'read':
-        if note.submitted_by == user:
-            return True
-        elif note.assigned_to == user:
-            return True
-        elif note.for_ticket.elevated and (user in ETS) and not note.assigned_to:
-            return True
-        else:
-            return False
-    elif action == 'delete':
-        if note.submitted_by == user:
-            return True
-        else:
-            return False
-    elif action == 'create':
-        if ticket_permissions(note, user, 'update'):
-            return True
-        else:
-            return False
-    else:
-        return False
+    this_query = User.gql("WHERE email = :user", user=user)
+    if len([user for user in this_query]):
+        this_user = this_query[0]
+        if action == 'read':
+            if note.submitted_by == this_user.email:
+                return True
+            elif note.assigned_to == this_user.email:
+                return True
+            elif note.for_ticket.elevated and this_user.ets and not note.assigned_to:
+                return True
+            elif this_user.admin or this_user.super_admin and not note.assigned_to:
+                return True
+        elif action == 'delete':
+            if note.submitted_by == this_user.email:
+                return True
+        elif action == 'create':
+            if ticket_permissions(note, this_user.email, 'update'):
+                return True
+    return False
 
 def get_my_tickets(user):
-    if user in ADMINS:
-        my_tickets = Support_Ticket.all()
-    elif user in ETS:
-        my_tickets = Support_Ticket.gql(
-                "WHERE elevated = TRUE")
-    else:
-        my_tickets = Support_Ticket.gql(
+    this_query = User.gql("WHERE email = :user", user=user)
+    if len([user for user in this_query]):
+        this_user = this_query[0]
+        if this_user.admin or this_user.super_admin:
+            my_tickets = Support_Ticket.all()
+        elif this_user.ets:
+            my_tickets = Support_Ticket.gql(
+                    "WHERE elevated = TRUE")
+        elif this_user.nettech:
+            my_tickets = []
+            [my_tickets.append(ticket) for ticket in Support_Ticket.gql(
                 "WHERE assigned_to = :assigned_to",
-                assigned_to=user)
+                assigned_to=this_user.email)]
+            for site in this_user.sites:
+                [my_tickets.append(ticket) for ticket in Support_Ticket.gql(
+                    "WHERE site = :site AND assigned_to != :assigned_to",
+                    site=site, assigned_to=this_user.email)]
     return my_tickets
 
 @app.route('/')
@@ -282,47 +283,51 @@ def home():
     this_user = str(users.get_current_user())
     page_params['user_name'] = this_user
 
-    token = channel.create_channel(this_user)
-    page_params['token'] = token
+    this_query = User.gql("WHERE email = :user", user=this_user)
+    if len([user for user in this_query]):
+        this_user = this_query[0]
 
-    if 'link' in request.args:
-        logging.info('Handle direct link...')
-
-    if this_user in ADMINS:
-        return render_template('admin_tickets.html',
-                page_params=page_params)
-    elif (this_user in [NET_TECHS[k] for k in NET_TECHS]) or (this_user in ETS):
-        return render_template('manage_tickets.html', 
-                page_params=page_params)
-    else:
-        return abort(403)
+        if this_user.admin or this_user.super_admin:
+            return render_template('admin_tickets.html',
+                    page_params=page_params)
+        elif this_user.nettech or this_user.ets:
+            return render_template('manage_tickets.html', 
+                    page_params=page_params)
+    return abort(403)
 
 @app.route('/admin', methods=['POST', 'GET'])
 def admin():
     this_user = str(users.get_current_user())
+    page_params['user_name'] = this_user
     
     if 'GET' in request.method:
         first_time = User.gql("WHERE super_admin = TRUE")
-        if not [item for item in first_time]:
-            return render_template('first_time.html', page_params=page_params)
-        else:
-            user = User.gql(
-                    "WHERE super_admin = TRUE AND email = :user", user=this_user)
-            if user:
+        if len([item for item in first_time]):
+            this_query = User.gql("WHERE email = :user", user=this_user)
+            if len([user for user in this_query if user.admin or user.super_admin]):
+                this_user = this_query[0]
+                this_user.last_login = datetime.datetime.now()
+                this_user.put()
                 return render_template('admin_panel.html', page_params=page_params)
             else:
                 return abort(403)
-    elif 'POST' in request.method:
-        logging.info(request.form)
-        these_params = request.form
-        super_admin = User(
-                first_name=these_params['first_name'],
-                last_name=these_params['last_name'],
-                email=these_params['email'],
-                super_admin=True,
-                )
-        super_admin.put()
-        return url_for('/admin')
+        else:
+            return render_template('first_time.html', page_params=page_params)
+
+    if 'POST' in request.method:
+        this_query = User.all()
+        if len([user for user in this_query if user.super_admin]) < 1:
+            these_params = request.form
+            super_admin = User(
+                    firstname=these_params['firstname'],
+                    lastname=these_params['lastname'],
+                    email=these_params['email'],
+                    super_admin=True,
+                    )
+            super_admin.put()
+            return JSON_OK
+        else:
+            return JSON_ERROR
 
 @app.route('/new_ticket', methods=['POST', 'GET', 'PUT', 'DELETE'])
 def new_ticket():
@@ -332,10 +337,12 @@ def new_ticket():
         logging.info(request.form)
         these_params = request.form
 
-        if these_params['site'] in NET_TECHS:
-            set_assignment = NET_TECHS[these_params['site']]
-        else:
-            set_assignment = NET_TECHS['DIST']
+        set_assignment = None
+        this_query = User.all()
+        for user in this_query:
+            for site in user.sites:
+                if site == these_params['site']:
+                    set_assignment = user.email
 
         this_ticket = Support_Ticket(
                 ticket_type=these_params['type'],
@@ -378,7 +385,7 @@ def single_user(user_id):
     elif request.method == 'PUT':
         if admin_permissions(this_user, 'update'):
             user = User.get_by_id(int(user_id))
-            if this_query:
+            if user:
                 if these_params['firstname'] != user.firstname:
                     user.firstname = these_params['firstname']
                 if these_params['lastname'] != user.lastname:
@@ -391,14 +398,21 @@ def single_user(user_id):
                     user.nettech = these_params['nettech']
                 if these_params['admin'] != user.admin and admin_permissions(this_user, 'super_admin'):
                     user.admin = these_params['admin']
+                if set(these_params['sites']) != set(user.sites):
+                    user.sites = these_params['sites']
                 user.put()
                 return JSON_OK
     elif request.method == 'DELETE':
         if admin_permissions(this_user, 'update'):
             user = User.get_by_id(int(user_id))
-            if user:
-                this_query.delete()
+            if (user.super_admin or user.admin) and admin_permissions(this_user, 'super_admin') and this_user != user.email:
+                user.delete()
                 return JSON_OK
+            elif not user.super_admin or user.admin:
+                user.delete()
+                return JSON_OK
+            else:
+                return JSON_ERROR
     elif user_id == 'new' and request.method == 'POST':
         if admin_permissions(this_user, 'update'):
             new_user = User(
@@ -408,6 +422,7 @@ def single_user(user_id):
                     admin=these_params['admin'],
                     ets=these_params['ets'],
                     nettech=these_params['nettech'],
+                    sites=these_params['sites'],
                     )
             new_user.put()
             return JSON_OK
@@ -430,16 +445,17 @@ def note(note_id):
     these_params = request.json
     if note_id == 'new' and request.method == 'POST':
         this_ticket = Support_Ticket.get_by_id(int(these_params['for_ticket']))
-        if not this_ticket:
-            return JSON_ERROR
-        if note_permissions(this_ticket, this_user, 'create'):
-            if 'assigned_to' not in these_params:
-                these_params['assigned_to'] = None
-            Note(for_ticket=this_ticket,
-                    message=these_params['message'],
-                    assigned_to=these_params['assigned_to'],
-                    submitted_by=str(users.get_current_user())).put()
-            return JSON_OK
+        if this_ticket:
+            if note_permissions(this_ticket, this_user, 'create'):
+                if 'assigned_to' not in these_params:
+                    these_params['assigned_to'] = None
+                Note(for_ticket=this_ticket,
+                        message=these_params['message'],
+                        assigned_to=these_params['assigned_to'],
+                        submitted_by=str(users.get_current_user())).put()
+                return JSON_OK
+            else:
+                return JSON_ERROR
         else:
             return JSON_ERROR
 
@@ -553,6 +569,16 @@ def tickets():
 
     return Response(
             response=json.dumps(these_tickets),
+            mimetype="application/json")
+
+@app.route('/debug')
+def debug():
+    dump = []
+    [dump.append(user_to_json(user)) for user in User.all()]
+    [dump.append(ticket_to_json(ticket)) for ticket in Support_Ticket.all()]
+    [dump.append(note_to_json(note)) for note in Note.all()]
+    return Response(
+            response=json.dumps(dump),
             mimetype="application/json")
 
 @app.route('/test', methods=['POST', 'GET', 'PUT', 'DELETE'])

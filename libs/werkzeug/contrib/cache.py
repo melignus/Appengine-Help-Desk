@@ -443,7 +443,7 @@ class MemcachedCache(BaseCache):
 
 
 # backwards compatibility
-GAEMemcachedCache = MemcachedCache
+HBUHSDMemcachedCache = MemcachedCache
 
 
 class RedisCache(BaseCache):

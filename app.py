@@ -13,7 +13,7 @@ from flask import Flask, Response, redirect, \
 # Google App Engine Block
 import logging
 from google.appengine.api import \
-        mail, users, channel
+        mail, users
 from google.appengine.ext.webapp.util import \
         run_wsgi_app
 from google.appengine.ext import \
@@ -36,46 +36,6 @@ SITES = [
         'Transportation',
         ]
 
-NET_TECHS = {
-        'DIST': 'ishelp@hbuhsd.edu',
-        'WHS': 'dhidalgo@hbuhsd.edu',
-        'EHS': 'ptabony@hbuhsd.edu',
-        'FVHS': 'iprotsenko@hbuhsd.edu',
-        'MHS': 'rpowell@hbuhsd.edu',
-        'OVHS': 'dtran@hbuhsd.edu',
-        'HBHS': 'along@hbuhsd.edu',
-        'VVHS': 'ishelp@hbuhsd.edu',
-        'HBAS': 'wlacap@hbuhsd.edu',
-        'CDS': 'wlacap@hbuhsd.edu',
-        'CHS': 'wlacap@hbuhsd.edu',
-        'Food Services': 'ishelp@hbuhsd.edu',
-        'Transportation': 'ishelp@hbuhsd.edu',
-        }
-
-IS_HELP = [
-        'wbeen@hbuhsd.edu',
-        'nbuihner@hbuhsd.edu',
-        'mford@hbuhsd.edu',
-        'mratanapratum@hbuhsd.edu',
-        'dhoang@hbuhsd.edu',
-        'djohnson@hbuhsd.edu',
-        'greeves@hbuhsd.edu',
-        'mtabata@hbuhsd.edu',
-        ]
-
-ADMINS = [
-        'nbuihner@hbuhsd.edu',
-        'mford@hbuhsd.edu',
-        'test@example.com',
-        #'test1@example.com',
-        #'test2@example.com',
-        ]
-
-ETS = [
-        'test1@example.com',
-        'test2@example.com',
-        ]
-
 JSON_ERROR = Response(
         response=json.dumps(False),
         mimetype="application/json",
@@ -83,7 +43,8 @@ JSON_ERROR = Response(
 
 JSON_OK = Response(
         response=json.dumps({}),
-        mimetype="application/json")
+        mimetype="application/json",
+        status=200)
 
 app = Flask(__name__)
 
@@ -276,6 +237,11 @@ def get_my_tickets(user):
                 [my_tickets.append(ticket) for ticket in Support_Ticket.gql(
                     "WHERE site = :site AND assigned_to != :assigned_to",
                     site=site, assigned_to=this_user.email)]
+            if 'DIST' in this_user.sites:
+                [my_tickets.append(ticket) for ticket in Support_Ticket.gql(
+                    "WHERE site = FALSE") if ticket not in my_tickets]
+                [my_tickets.append(ticket) for ticket in Support_Ticket.gql(
+                    "WHERE site = :site", site='DIST') if ticket not in my_tickets]
     return my_tickets
 
 @app.route('/')
@@ -577,6 +543,12 @@ def debug():
     [dump.append(user_to_json(user)) for user in User.all()]
     [dump.append(ticket_to_json(ticket)) for ticket in Support_Ticket.all()]
     [dump.append(note_to_json(note)) for note in Note.all()]
+    for user in User.all():
+        logging.info(db.to_dict(user))
+    for ticket in Support_Ticket.all():
+        logging.info(db.to_dict(ticket))
+    for note in Note.all():
+        logging.info(db.to_dict(note))
     return Response(
             response=json.dumps(dump),
             mimetype="application/json")

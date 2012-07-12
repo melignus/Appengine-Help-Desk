@@ -159,18 +159,18 @@ var Ticket = Backbone.Model.extend({
             response.completed_on = false;
             response.completed_by = false;
         } else {
-            var fixedDate = new Date(response.completed_on.replace(/-/g,'/').replace(/T/,' ').replace(/\+/,' +')).toString();
+            var fixedDate = new Date(response.completed_on).toString();
             response.completed_on = fixedDate.slice(0, fixedDate.indexOf('GMT')-4);
         }
         if (!response.elevated){
             response.elevated_on = false;
             response.elevated_by = false;
         } else {
-            var fixedDate = new Date(response.elevated_on.replace(/-/g,'/').replace(/T/,' ').replace(/\+/,' +')).toString();
+            var fixedDate = new Date(response.elevated_on).toString();
             response.elevated_on = fixedDate.slice(0, fixedDate.indexOf('GMT')-4);
         }
         if (response.submitted_on){
-            var fixedDate = new Date(response.submitted_on.replace(/-/g,'/').replace(/T/,' ').replace(/\+/,' +')).toString();
+            var fixedDate = new Date(response.submitted_on).toString();
             response.submitted_on = fixedDate.slice(0, fixedDate.indexOf('GMT')-4);
         }
         if (response.submitted_by && response.submitted_by.indexOf('@') != -1){

@@ -189,12 +189,19 @@ def ticket_permissions(ticket, user, action):
                 return True
             elif ticket.elevated and this_user.ets:
                 return True
+            elif ticket.assigned_to == 'DIST' and 'DIST' in this_user.sites:
+                return True
         if action == 'update':
             if this_user.admin or this_user.super_admin:
                 return True
             elif ticket.assigned_to == this_user.email:
                 return True
             elif ticket.elevated and this_user.ets:
+                return True
+            elif ticket.assigned_to == 'DIST' and 'DIST' in this_user.sites:
+                return True
+        if action == 'admin':
+            if this_user.admin or this_user.super_admin:
                 return True
     return False
 
@@ -233,15 +240,14 @@ def get_my_tickets(user):
             [my_tickets.append(ticket) for ticket in Support_Ticket.gql(
                 "WHERE assigned_to = :assigned_to",
                 assigned_to=this_user.email)]
-            for site in this_user.sites:
-                [my_tickets.append(ticket) for ticket in Support_Ticket.gql(
-                    "WHERE site = :site AND assigned_to != :assigned_to",
-                    site=site, assigned_to=this_user.email)]
-            if 'DIST' in this_user.sites:
-                [my_tickets.append(ticket) for ticket in Support_Ticket.gql(
-                    "WHERE site = FALSE") if ticket not in my_tickets]
-                [my_tickets.append(ticket) for ticket in Support_Ticket.gql(
-                    "WHERE site = :site", site='DIST') if ticket not in my_tickets]
+            if this_user.sites:
+                for site in this_user.sites:
+                    [my_tickets.append(ticket) for ticket in Support_Ticket.gql(
+                        "WHERE site = :site AND assigned_to != :assigned_to",
+                        site=site, assigned_to=this_user.email)]
+                if 'DIST' in this_user.sites:
+                    [my_tickets.append(ticket) for ticket in Support_Ticket.gql(
+                        "WHERE assigned_to = 'DIST'") if ticket not in my_tickets]
     return my_tickets
 
 @app.route('/')
@@ -303,7 +309,7 @@ def new_ticket():
         logging.info(request.form)
         these_params = request.form
 
-        set_assignment = None
+        set_assignment = 'DIST'
         this_query = User.all()
         for user in this_query:
             for site in user.sites:
@@ -364,8 +370,11 @@ def single_user(user_id):
                     user.nettech = these_params['nettech']
                 if these_params['admin'] != user.admin and admin_permissions(this_user, 'super_admin'):
                     user.admin = these_params['admin']
-                if set(these_params['sites']) != set(user.sites):
-                    user.sites = these_params['sites']
+                if these_params['sites']:
+                    if set(these_params['sites']) != set(user.sites):
+                        user.sites = these_params['sites']
+                else:
+                    user.sites = []
                 user.put()
                 return JSON_OK
     elif request.method == 'DELETE':
@@ -388,8 +397,9 @@ def single_user(user_id):
                     admin=these_params['admin'],
                     ets=these_params['ets'],
                     nettech=these_params['nettech'],
-                    sites=these_params['sites'],
                     )
+            if these_params['sites']:
+                new_user.sites = these_params['sites']
             new_user.put()
             return JSON_OK
     return JSON_ERROR
@@ -503,14 +513,21 @@ def ticket(ticket_id):
 
             # Handle ticket reassignment
             if this_ticket.assigned_to != these_params['assigned_to'] and \
-                    this_user in ADMINS:
-                new_assignment = these_params['assigned_to']
-                if new_assignment in NET_TECHS or \
-                        new_assignment in ETS or \
-                        new_assignment in ADMINS:
-                    this_ticket.assigned_to = new_assignment
-                else:
-                    return JSON_ERROR
+                    ticket_permissions(this_ticket, this_user, 'admin'):
+                        new_assignment = User.gql(
+                                "WHERE email = :user", 
+                                user=these_params['assigned_to'])
+                        if len([user for user in new_assignment]):
+                            new_assignment = new_assignment[0]
+                            if new_assignment.nettech or \
+                                    new_assignment.ets or \
+                                    new_assignment.admin or \
+                                    new_assignemnt.super_admin:
+                                this_ticket.assigned_to = new_assignment.email
+                            else:
+                                return JSON_ERROR
+                        else:
+                            return JSON_ERROR
 
             # Handle ticket inventory number change
             if this_ticket.inventory != these_params['inventory']:
@@ -518,7 +535,7 @@ def ticket(ticket_id):
 
             this_ticket.starred = these_params['starred']
             this_ticket.on_hold = these_params['on_hold']
-            if this_user in ADMINS:
+            if ticket_permissions(this_ticket, this_user, 'admin'):
                 this_ticket.priority = these_params['priority']
             this_ticket.put()
             return JSON_OK

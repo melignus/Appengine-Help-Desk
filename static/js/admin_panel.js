@@ -139,7 +139,7 @@ var AdminPanel = Backbone.View.extend({
         var nettech = Checked($('#nettech', self.el));
         var admin = Checked($('#admin', self.el));
         var ets = Checked($('#ets', self.el));
-        var informationSet = (firstname !== '' && lastname !== '' && sites !== '' && email.indexOf('@') !== -1);
+        var informationSet = (firstname !== '' && lastname !== '' && email.indexOf('@') !== -1);
         var permissionsSet = (admin || ets || nettech);
         if (e.keyCode === 27){
             self.render();
@@ -149,15 +149,21 @@ var AdminPanel = Backbone.View.extend({
             return;
         }
         var editUser = self.users.get($('#editUser').attr('user-id'));
-        editUser.save({
+        var options = {
             'firstname': firstname,
             'lastname': lastname,
             'email': email,
             'nettech': nettech,
             'admin': admin,
             'ets': ets,
-            'sites': sites,
-        });
+        }
+        if (sites !== ''){
+            options['sites'] = sites;
+        } else {
+            options['sites'] = false;
+        }
+
+        editUser.save(options);
         self.users.fetch();
         self.render();
     },
@@ -183,7 +189,7 @@ var AdminPanel = Backbone.View.extend({
         var nettech = Checked($('#nettech', self.el));
         var admin = Checked($('#admin', self.el));
         var ets = Checked($('#ets', self.el));
-        var informationSet = (firstname !== '' && lastname !== '' && sites !== '' && email.indexOf('@') !== -1);
+        var informationSet = (firstname !== '' && lastname !== '' && email.indexOf('@') !== -1);
         var permissionsSet = (admin || ets || nettech);
         if (e.keyCode === 27){
             self.render();
@@ -192,15 +198,19 @@ var AdminPanel = Backbone.View.extend({
         if (e.type !== "click" &&(!informationSet || !permissionsSet || e.keyCode !== 13)){
             return;
         }
-        var newUser = new User({
+        var options = {
             'firstname': firstname,
             'lastname': lastname,
             'email': email,
             'nettech': nettech,
             'admin': admin,
             'ets': ets,
-            'sites': sites,
-        });
+        }
+        if (sites !== ''){
+            options['sites'] = sites;
+        }
+        var newUser = new User(options);
+        
         newUser.save({wait: true});
         self.users.fetch();
         self.render();

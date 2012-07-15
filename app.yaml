@@ -1,4 +1,4 @@
-application: hbuhsd-help-desk
+application: appengine-help-desk
 version: 1
 runtime: python27
 threadsafe: false

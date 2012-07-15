@@ -1,23 +1,26 @@
-import re, os, inspect, sys, datetime, urllib, urllib2
-from functools import wraps
+import os
+import inspect
+import sys
+import datetime
 
-thisPath = os.path.dirname(inspect.getfile(inspect.currentframe()))+'/'
+thisPath = os.path.dirname(inspect.getfile(inspect.currentframe())) + '/'
 if thisPath == '/':
     thisPath = './'
-sys.path.append(thisPath+'libs/')
+sys.path.append(thisPath + 'libs/')
 
-from flask import Flask, Response, redirect, \
-        url_for, request, session, abort, \
-        render_template, json, jsonify
+from flask import Flask
+import Response
+import request
+import abort
+import render_template
+import json
+import jsonify
 
 # Google App Engine Block
 import logging
-from google.appengine.api import \
-        mail, users
-from google.appengine.ext.webapp.util import \
-        run_wsgi_app
-from google.appengine.ext import \
-        db
+from google.appengine.api import users
+from google.appengine.ext.webapp.util import run_wsgi_app
+from google.appengine.ext import db
 # End Google App Engine Block
 
 SITES = [
@@ -50,6 +53,7 @@ app = Flask(__name__)
 
 page_params = {}
 
+
 class User(db.Model):
     firstname = db.StringProperty()
     lastname = db.StringProperty()
@@ -61,17 +65,18 @@ class User(db.Model):
     super_admin = db.BooleanProperty()
     sites = db.StringListProperty()
 
+
 class Support_Ticket(db.Model):
     ticket_type = db.StringProperty()
     user_type = db.StringProperty()
     site = db.StringProperty()
     macro = db.StringProperty()
     micro = db.StringProperty()
-    
+
     submitted_on = db.DateTimeProperty(auto_now_add=True)
     submitted_by = db.StringProperty()
     submitted_ipaddress = db.StringProperty()
-    
+
     closed = db.BooleanProperty()
     completed_on = db.DateTimeProperty()
     completed_by = db.StringProperty()
@@ -92,8 +97,9 @@ class Support_Ticket(db.Model):
     #send_to_todo = db.BooleanProperty()
     #due_date = db.DateTimeProperty()
 
+
 class Note(db.Model):
-    for_ticket = db.ReferenceProperty(Support_Ticket, 
+    for_ticket = db.ReferenceProperty(Support_Ticket,
             collection_name='notes')
     message = db.StringProperty()
 
@@ -101,12 +107,14 @@ class Note(db.Model):
     submitted_by = db.StringProperty()
     assigned_to = db.StringProperty()
 
+
 def fix_time(time):
     try:
         time = time.isoformat()
     except:
         time = False
     return time
+
 
 def ticket_to_json(ticket):
     this_ticket = {
@@ -120,8 +128,8 @@ def ticket_to_json(ticket):
             'closed': ticket.closed,
             'completed_on': fix_time(ticket.completed_on),
             'completed_by': ticket.completed_by,
-            'assigned_to' : ticket.assigned_to,
-            'description' : ticket.description,
+            'assigned_to': ticket.assigned_to,
+            'description': ticket.description,
             'elevated': ticket.elevated,
             'elevated_on': fix_time(ticket.elevated_on),
             'elevated_by': ticket.elevated_by,
@@ -134,8 +142,9 @@ def ticket_to_json(ticket):
             }
     return this_ticket
 
+
 def note_to_json(note):
-    if note.assigned_to == None:
+    if note.assigned_to is None:
         assigned_to = False
     else:
         assigned_to = note.assigned_to
@@ -147,6 +156,7 @@ def note_to_json(note):
         'assigned_to': assigned_to,
         }
     return this_note
+
 
 def user_to_json(user):
     this_user = {
@@ -163,6 +173,7 @@ def user_to_json(user):
             }
     return this_user
 
+
 def admin_permissions(user, action):
     this_query = User.gql("WHERE email = :user", user=user)
     if len([user for user in this_query]):
@@ -177,6 +188,7 @@ def admin_permissions(user, action):
             if this_user.super_admin:
                 return True
     return False
+
 
 def ticket_permissions(ticket, user, action):
     this_query = User.gql("WHERE email = :user", user=user)
@@ -205,6 +217,7 @@ def ticket_permissions(ticket, user, action):
                 return True
     return False
 
+
 def note_permissions(note, user, action):
     this_query = User.gql("WHERE email = :user", user=user)
     if len([user for user in this_query]):
@@ -214,9 +227,11 @@ def note_permissions(note, user, action):
                 return True
             elif note.assigned_to == this_user.email:
                 return True
-            elif note.for_ticket.elevated and this_user.ets and not note.assigned_to:
+            elif note.for_ticket.elevated and \
+                this_user.ets and not note.assigned_to:
                 return True
-            elif this_user.admin or this_user.super_admin and not note.assigned_to:
+            elif this_user.admin or this_user.super_admin and \
+                not note.assigned_to:
                 return True
         elif action == 'delete':
             if note.submitted_by == this_user.email:
@@ -225,6 +240,7 @@ def note_permissions(note, user, action):
             if ticket_permissions(note, this_user.email, 'update'):
                 return True
     return False
+
 
 def get_my_tickets(user):
     this_query = User.gql("WHERE email = :user", user=user)
@@ -242,13 +258,17 @@ def get_my_tickets(user):
                 assigned_to=this_user.email)]
             if this_user.sites:
                 for site in this_user.sites:
-                    [my_tickets.append(ticket) for ticket in Support_Ticket.gql(
+                    [my_tickets.append(ticket) for ticket in
+                        Support_Ticket.gql(
                         "WHERE site = :site AND assigned_to != :assigned_to",
                         site=site, assigned_to=this_user.email)]
                 if 'DIST' in this_user.sites:
-                    [my_tickets.append(ticket) for ticket in Support_Ticket.gql(
-                        "WHERE assigned_to = 'DIST'") if ticket not in my_tickets]
+                    [my_tickets.append(ticket) for ticket in
+                        Support_Ticket.gql(
+                        "WHERE assigned_to = 'DIST'") if
+                        ticket not in my_tickets]
     return my_tickets
+
 
 @app.route('/')
 def home():
@@ -263,24 +283,27 @@ def home():
             return render_template('admin_tickets.html',
                     page_params=page_params)
         elif this_user.nettech or this_user.ets:
-            return render_template('manage_tickets.html', 
+            return render_template('manage_tickets.html',
                     page_params=page_params)
     return abort(403)
+
 
 @app.route('/admin', methods=['POST', 'GET'])
 def admin():
     this_user = str(users.get_current_user())
     page_params['user_name'] = this_user
-    
+
     if 'GET' in request.method:
         first_time = User.gql("WHERE super_admin = TRUE")
         if len([item for item in first_time]):
             this_query = User.gql("WHERE email = :user", user=this_user)
-            if len([user for user in this_query if user.admin or user.super_admin]):
+            if len([user for user in this_query if
+                user.admin or user.super_admin]):
                 this_user = this_query[0]
                 this_user.last_login = datetime.datetime.now()
                 this_user.put()
-                return render_template('admin_panel.html', page_params=page_params)
+                return render_template(
+                    'admin_panel.html', page_params=page_params)
             else:
                 return abort(403)
         else:
@@ -300,6 +323,7 @@ def admin():
             return JSON_OK
         else:
             return JSON_ERROR
+
 
 @app.route('/new_ticket', methods=['POST', 'GET', 'PUT', 'DELETE'])
 def new_ticket():
@@ -324,7 +348,7 @@ def new_ticket():
                 micro=these_params['micro'],
                 description=these_params['description'],
                 inventory=these_params['inventory'],
-                submitted_by=str(users.get_current_user()),
+                submitted_by=this_user,
                 submitted_ipaddress=request.remote_addr,
                 assigned_to=set_assignment,
                 elevated=False,
@@ -342,6 +366,7 @@ def new_ticket():
             'please fill all fields to submit a new support ticket'
 
     return render_template('new_ticket.html', page_params=page_params)
+
 
 @app.route('/user/<user_id>', methods=['POST', 'GET', 'PUT', 'DELETE'])
 def single_user(user_id):
@@ -368,7 +393,8 @@ def single_user(user_id):
                     user.ets = these_params['ets']
                 if these_params['nettech'] != user.nettech:
                     user.nettech = these_params['nettech']
-                if these_params['admin'] != user.admin and admin_permissions(this_user, 'super_admin'):
+                if these_params['admin'] != user.admin and \
+                    admin_permissions(this_user, 'super_admin'):
                     user.admin = these_params['admin']
                 if these_params['sites']:
                     if set(these_params['sites']) != set(user.sites):
@@ -380,7 +406,9 @@ def single_user(user_id):
     elif request.method == 'DELETE':
         if admin_permissions(this_user, 'update'):
             user = User.get_by_id(int(user_id))
-            if (user.super_admin or user.admin) and admin_permissions(this_user, 'super_admin') and this_user != user.email:
+            if (user.super_admin or user.admin) and \
+                admin_permissions(this_user, 'super_admin') and \
+                this_user != user.email:
                 user.delete()
                 return JSON_OK
             elif not user.super_admin or user.admin:
@@ -404,6 +432,7 @@ def single_user(user_id):
             return JSON_OK
     return JSON_ERROR
 
+
 @app.route('/users', methods=['GET'])
 def all_users():
     this_user = str(users.get_current_user())
@@ -415,12 +444,14 @@ def all_users():
     else:
         return JSON_ERROR
 
+
 @app.route('/note/<note_id>', methods=['POST', 'GET', 'PUT', 'DELETE'])
 def note(note_id):
     this_user = str(users.get_current_user())
     these_params = request.json
     if note_id == 'new' and request.method == 'POST':
-        this_ticket = Support_Ticket.get_by_id(int(these_params['for_ticket']))
+        this_ticket = Support_Ticket.get_by_id(
+                int(these_params['for_ticket']))
         if this_ticket:
             if note_permissions(this_ticket, this_user, 'create'):
                 if 'assigned_to' not in these_params:
@@ -456,6 +487,7 @@ def note(note_id):
         else:
             return JSON_ERROR
 
+
 @app.route('/notes/<ticket_id>', methods=['POST', 'GET', 'PUT', 'DELETE'])
 def notes(ticket_id):
     this_user = str(users.get_current_user())
@@ -469,7 +501,8 @@ def notes(ticket_id):
             response=json.dumps(these_notes),
             mimetype="application/json")
 
-# POST = create # PUT = update # GET = retrieve # DELETE = delete # Backbone.js
+
+# POST=create # PUT=update # GET=retrieve # DELETE=delete # Backbone.js
 @app.route('/ticket/<ticket_id>', methods=['POST', 'GET', 'PUT', 'DELETE'])
 def ticket(ticket_id):
     this_user = str(users.get_current_user())
@@ -515,14 +548,14 @@ def ticket(ticket_id):
             if this_ticket.assigned_to != these_params['assigned_to'] and \
                     ticket_permissions(this_ticket, this_user, 'admin'):
                         new_assignment = User.gql(
-                                "WHERE email = :user", 
+                                "WHERE email = :user",
                                 user=these_params['assigned_to'])
                         if len([user for user in new_assignment]):
                             new_assignment = new_assignment[0]
                             if new_assignment.nettech or \
                                     new_assignment.ets or \
                                     new_assignment.admin or \
-                                    new_assignemnt.super_admin:
+                                    new_assignment.super_admin:
                                 this_ticket.assigned_to = new_assignment.email
                             else:
                                 return JSON_ERROR
@@ -544,6 +577,7 @@ def ticket(ticket_id):
     else:
         return JSON_ERROR
 
+
 @app.route('/tickets', methods=['GET'])
 def tickets():
     this_user = str(users.get_current_user())
@@ -553,6 +587,7 @@ def tickets():
     return Response(
             response=json.dumps(these_tickets),
             mimetype="application/json")
+
 
 @app.route('/debug')
 def debug():
@@ -570,6 +605,7 @@ def debug():
             response=json.dumps(dump),
             mimetype="application/json")
 
+
 @app.route('/test', methods=['POST', 'GET', 'PUT', 'DELETE'])
 def test():
     logging.info('json: %s' % request.json)
@@ -577,6 +613,7 @@ def test():
     logging.info('args: %s' % request.args)
     logging.info('request: %s' % request)
     return jsonify({'message': request.args['code']})
+
 
 @app.route('/test2', methods=['POST', 'GET', 'PUT', 'DELETE'])
 def test2():
@@ -586,19 +623,13 @@ def test2():
     logging.info('request: %s' % request)
     return jsonify({'message': request.args})
 
-@app.route('/test3', methods=['POST', 'GET', 'PUT', 'DELETE'])
-def test3():
-    try:
-        channel.send_message('test@example.com', json.dumps({'message': 'Ok'}))
-    except:
-        return jsonify({'message': 'Error'})
-    return jsonify({'message': 'Ok'})
 
 @app.errorhandler(404)
 def page_not_found(error):
     page_params['title'] = '404'
     page_params['message'] = 'The page you are looking for cannot be found'
     return render_template('404.html', page_params=page_params)
+
 
 @app.errorhandler(403)
 def http_forbidden(error):
@@ -607,6 +638,8 @@ def http_forbidden(error):
             'Access to this page is restricted to HBUHSD staff only. To \
             access this page you must have a valid @hbuhsd.edu email account'
     return render_template('403.html', page_params=page_params)
+
+dict(
 
 if __name__ == "__main__":
     run_wsgi_app(app)

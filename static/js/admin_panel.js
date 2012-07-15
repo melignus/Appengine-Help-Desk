@@ -73,7 +73,6 @@ var Users = Backbone.Collection.extend({
     url: "/users",
     initialize: function(){
     },
-    
 });
 
 // main app view
@@ -92,7 +91,7 @@ var AdminPanel = Backbone.View.extend({
     },
     initialize: function(){
         var self = this;
-        
+
         self.users.bind('all', self.render, self);
         self.users.fetch();
         self.render();

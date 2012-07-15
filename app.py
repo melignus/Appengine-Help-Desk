@@ -23,6 +23,8 @@ from google.appengine.ext.webapp.util import run_wsgi_app
 from google.appengine.ext import db
 # End Google App Engine Block
 
+# TODO these need to be set dynamically via the admin panel, which means the
+# tier system needs to be implemented for elevation to work dynamically
 SITES = [
         'DIST',
         'WHS',

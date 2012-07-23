@@ -1,3 +1,4 @@
+// A list of possible reasons a ticket might end up elevated.
 var META_LIST = [
     {
         "name": "Alarm Security",
@@ -74,6 +75,9 @@ var META_LIST = [
     },
 ];
 
+// An incomplete list of meta information for tickets that will help with
+// reporting and data collection later. This is just a small list that I came 
+// up with on the fly.
 var COMPLETE_META = ["Computer","Printer","Windows","Win95",
     "Win2k","WinXp","WinVista","Win7","Win8","IE","IE6","IE7",
     "IE9","Office","Word","Outlook","Excel","LibreOffice",
@@ -241,9 +245,11 @@ var Tickets = Backbone.Collection.extend({
 //single ticket view in window
 var SingleTicket = Backbone.View.extend({
     events: {
+        "dblclick .ticketNote": "getNote",
         "dblclick #addNote": "getNote",
         "keypress #newNote": "addNote",
         "dblclick .removeMe": "removeNote",
+        "click .cancel": "render",
         "click #closeMe": "closeTicket",
         "click #elevateMe": "elevateTicket",
     },
@@ -305,11 +311,19 @@ var SingleTicket = Backbone.View.extend({
         var elevationMeta = $('#elevationMeta').val();
         self.model.elevate(elevationMeta);
     },
-    getNote: function(){
+    getNote: function(e){
         var self = this;
+        var dataText = $($('em', e.currentTarget)[0]).attr('data-original-title');
+        if (dataText){
+            var from = dataText.slice(dataText.indexOf('From:')+5, dataText.indexOf(' '))+':';
+        } else {
+            dataText = $($('span', e.currentTarget)[0]).attr('data-original-title');
+            var from = dataText.slice(dataText.indexOf('From:')+5, dataText.length)+':';
+        }
         $('#addNote', self.el).remove();
-        $('#ticketNotes', self.el).append('<li id="newNoteList"><input id="newNote" type="text" class="input span2" /></li>');
+        $('#ticketNotes', self.el).append('<li id="newNoteList"><div class="input-append"><input id="newNote" type="text" class="input span2"><button class="btn cancel"><i class="icon-remove"></i></button></div></li>');
         $('#newNote').focus();
+        $('#newNote').val(from);
     },
     addNote: function(e){
         var self = this;
@@ -403,7 +417,7 @@ var HelpDesk = Backbone.View.extend({
         self.userName = options.parameters.user_name;
         self.displayOptions = 'Open';
         self.displaySearch = '';
-        
+
         self.tickets.bind('all', self.render, self);
         self.tickets.fetch();
         self.render();

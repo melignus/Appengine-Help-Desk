@@ -271,6 +271,7 @@ var Tickets = Backbone.Collection.extend({
 var SingleTicket = Backbone.View.extend({
     events: {
         "dblclick #addNote": "getNote",
+        "dblclick .ticketNote": "getNote",
         "keypress #newNote": "addNote",
         "keypress #newAssignment": "setReassignment",
         "keypress #newInventory": "setInventory",
@@ -392,11 +393,22 @@ var SingleTicket = Backbone.View.extend({
         }
         self.model.reassign(reassignment);
     },
-    getNote: function(){
+    getNote: function(e){
         var self = this;
+        var dataText = $($('em', e.currentTarget)[0]).attr('data-original-title');
+        if (dataText){
+            var from = dataText.slice(dataText.indexOf('From:')+5, dataText.indexOf(' '))+':';
+        } else {
+            dataText = $($('span', e.currentTarget)[0]).attr('data-original-title');
+            var from = dataText.slice(dataText.indexOf('From:')+5, dataText.length)+':';
+        }
         $('#addNote', self.el).remove();
         $('#ticketNotes', self.el).append('<li id="newNoteList"><div class="input-append"><input id="newNote" type="text" class="input span2"><button class="btn cancel"><i class="icon-remove"></i></button></div></li>');
+        $('.ticketNote').each(function(){
+            $(this).removeClass('ticketNote');
+        });
         $('#newNote').focus();
+        $('#newNote').val(from);
     },
     addNote: function(e){
         var self = this;

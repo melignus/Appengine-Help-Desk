@@ -16,6 +16,8 @@ from flask import render_template
 from flask import json
 from flask import jsonify
 
+from settings import SITES
+
 # Google App Engine Block
 import logging
 from google.appengine.api import users
@@ -23,23 +25,6 @@ from google.appengine.ext.webapp.util import run_wsgi_app
 from google.appengine.ext import db
 # End Google App Engine Block
 
-# TODO these need to be set dynamically via the admin panel, which means the
-# tier system needs to be implemented for elevation to work dynamically
-SITES = [
-        'DIST',
-        'WHS',
-        'EHS',
-        'FVHS',
-        'MHS',
-        'OVHS',
-        'HBHS',
-        'VVHS',
-        'HBAS',
-        'CDS',
-        'CHS',
-        'Food Services',
-        'Transportation',
-        ]
 
 JSON_ERROR = Response(
         response=json.dumps(False),

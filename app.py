@@ -9,12 +9,12 @@ if thisPath == '/':
 sys.path.append(thisPath + 'libs/')
 
 from flask import Flask
-import Response
-import request
-import abort
-import render_template
-import json
-import jsonify
+from flask import Response
+from flask import request
+from flask import abort
+from flask import render_template
+from flask import json
+from flask import jsonify
 
 # Google App Engine Block
 import logging
@@ -641,7 +641,6 @@ def http_forbidden(error):
             access this page you must have a valid @hbuhsd.edu email account'
     return render_template('403.html', page_params=page_params)
 
-dict(
 
 if __name__ == "__main__":
     run_wsgi_app(app)

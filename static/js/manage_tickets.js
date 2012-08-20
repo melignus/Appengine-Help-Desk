@@ -129,6 +129,13 @@ var Ticket = Backbone.Model.extend({
             on_hold: !self.get("on_hold"),
         });
     },
+    inventory: function(changeTo){
+        var self = this;
+        self.save({
+            inventory: changeTo,
+        });
+        self.fetch({wait: true});
+    },
     parse: function(response){
         if (!response.closed){
             response.completed_on = false;
@@ -250,6 +257,8 @@ var SingleTicket = Backbone.View.extend({
         "keypress #newNote": "addNote",
         "dblclick .removeMe": "removeNote",
         "click .cancel": "render",
+        "dblclick #inventory": "getInventory",
+        "keypress #newInventory": "setInventory",
         "click #closeMe": "closeTicket",
         "click #elevateMe": "elevateTicket",
     },
@@ -311,6 +320,23 @@ var SingleTicket = Backbone.View.extend({
         var elevationMeta = $('#elevationMeta').val();
         self.model.elevate(elevationMeta);
     },
+    getInventory: function(){
+        var self = this;
+        $('#inventory').html('<strong>Reassign inventory number:</strong><div class="input-append"><input id="newInventory" type="text" class="input span2"><button class="btn cancel"><i class="icon-remove"></i></button></div>');
+        $('#newInventory').focus();
+    },
+    setInventory: function(e){
+        var self = this;
+        var newNumber = $('#newInventory').val();
+        if (e.keyCode === 27){
+            self.render();
+            return;
+        }
+        if (!newNumber || e.keyCode !== 13){
+            return;
+        }
+        self.model.inventory(newNumber);
+    },
     getNote: function(e){
         var self = this;
         var dataText = $($('em', e.currentTarget)[0]).attr('data-original-title');
@@ -322,6 +348,9 @@ var SingleTicket = Backbone.View.extend({
         }
         $('#addNote', self.el).remove();
         $('#ticketNotes', self.el).append('<li id="newNoteList"><div class="input-append"><input id="newNote" type="text" class="input span2"><button class="btn cancel"><i class="icon-remove"></i></button></div></li>');
+        $('.ticketNote').each(function(){
+            $(this).removeClass('ticketNote');
+        });
         $('#newNote').focus();
         $('#newNote').val(from);
     },

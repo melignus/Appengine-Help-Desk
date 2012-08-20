@@ -51,6 +51,7 @@ class User(db.Model):
     last_login = db.DateTimeProperty()
     super_admin = db.BooleanProperty()
     sites = db.StringListProperty()
+    favorites = db.StringListProperty()
 
 
 class Support_Ticket(db.Model):
@@ -234,10 +235,10 @@ def get_my_tickets(user):
     if len([user for user in this_query]):
         this_user = this_query[0]
         if this_user.admin or this_user.super_admin:
-            my_tickets = Support_Ticket.all()
+            my_tickets = [ticket for ticket in Support_Ticket.all()]
         elif this_user.ets:
-            my_tickets = Support_Ticket.gql(
-                    "WHERE elevated = TRUE")
+            my_tickets = [ticket for ticket in Support_Ticket.gql(
+                    "WHERE elevated = TRUE")]
         elif this_user.nettech:
             my_tickets = []
             [my_tickets.append(ticket) for ticket in Support_Ticket.gql(
@@ -254,6 +255,11 @@ def get_my_tickets(user):
                         Support_Ticket.gql(
                         "WHERE assigned_to = 'DIST'") if
                         ticket not in my_tickets]
+    for i in range(len(my_tickets)):
+        if str(my_tickets[i].key()) in this_user.favorites:
+            my_tickets[i].starred = True
+        else:
+            my_tickets[i].starred = False
     return my_tickets
 
 
@@ -493,11 +499,22 @@ def notes(ticket_id):
 @app.route('/ticket/<ticket_id>', methods=['POST', 'GET', 'PUT', 'DELETE'])
 def ticket(ticket_id):
     this_user = str(users.get_current_user())
+    user_object = User.gql("WHERE email = :user", user=this_user)
+    if len([user for user in user_object]):
+        user_object = user_object[0]
+    else:
+        user_object = False
     if request.method == 'GET':
         this_ticket = Support_Ticket.get_by_id(int(ticket_id))
         if not this_ticket:
             return JSON_ERROR
         if ticket_permissions(this_ticket, this_user, 'read'):
+            if str(this_ticket.key()) in user_object.favorites:
+                this_ticket.starred = True
+                logging.info("************Found***********")
+            else:
+                this_ticket.starred = False
+                logging.info("***********Not Found*********")
             return Response(
                     response=json.dumps(ticket_to_json(this_ticket)),
                     mimetype="application/json")
@@ -553,11 +570,22 @@ def ticket(ticket_id):
             if this_ticket.inventory != these_params['inventory']:
                 this_ticket.inventory = these_params['inventory']
 
-            this_ticket.starred = these_params['starred']
             this_ticket.on_hold = these_params['on_hold']
             if ticket_permissions(this_ticket, this_user, 'admin'):
                 this_ticket.priority = these_params['priority']
             this_ticket.put()
+
+            # this_ticket.starred = these_params['starred']
+            if these_params['starred']:
+                if str(this_ticket.key()) not in user_object.favorites:
+                    user_object.favorites.append(str(this_ticket.key()))
+                this_ticket.starred = True
+            else:
+                if str(this_ticket.key()) in user_object.favorites:
+                    user_object.favorites.remove(str(this_ticket.key()))
+                this_ticket.starred = False
+
+            user_object.put()
             return JSON_OK
         else:
             return JSON_ERROR

@@ -283,7 +283,6 @@ var SingleTicket = Backbone.View.extend({
         "click #reopen": "reopenTicket",
         "click #deelevate": "deelevateTicket",
         "click .cancel": "render",
-        "click .sortme": "sortMe",
         "click #prioritize": "prioritize",
     },
     initialize: function(){
@@ -337,9 +336,6 @@ var SingleTicket = Backbone.View.extend({
     prioritize: function(){
         var self = this;
         self.model.prioritize();
-    },
-    sortMe: function(e){
-        console.log($(e));
     },
     closeTicket: function(){
         var self = this;
@@ -395,12 +391,17 @@ var SingleTicket = Backbone.View.extend({
     },
     getNote: function(e){
         var self = this;
+        console.log($(e).el);
         var dataText = $($('em', e.currentTarget)[0]).attr('data-original-title');
-        if (dataText){
-            var from = dataText.slice(dataText.indexOf('From:')+5, dataText.indexOf(' '))+':';
+        if ($(e.currentTarget)[0].id !== 'addNote'){
+            if (dataText && $(e.currentTarget)[0].id !== 'addNote'){
+                var from = dataText.slice(dataText.indexOf('From:')+5, dataText.indexOf(' '))+':';
+            } else {
+                dataText = $($('span', e.currentTarget)[0]).attr('data-original-title');
+                var from = dataText.slice(dataText.indexOf('From:')+5, dataText.length)+':';
+            }
         } else {
-            dataText = $($('span', e.currentTarget)[0]).attr('data-original-title');
-            var from = dataText.slice(dataText.indexOf('From:')+5, dataText.length)+':';
+            var from = '';
         }
         $('#addNote', self.el).remove();
         $('#ticketNotes', self.el).append('<li id="newNoteList"><div class="input-append"><input id="newNote" type="text" class="input span2"><button class="btn cancel"><i class="icon-remove"></i></button></div></li>');
@@ -521,9 +522,6 @@ var HelpDesk = Backbone.View.extend({
         $('#displayOptions').val(self.displayOptions);
         $('#displaySearch').val(self.displaySearch);
         return self;
-    },
-    sortMe: function(e){
-        console.log($(e.srcElement).val());
     },
     setSearch: function(e){
         var self = this;

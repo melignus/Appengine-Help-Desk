@@ -209,7 +209,6 @@ var Notes = Backbone.Collection.extend({
                     assigned_to: assignedTo,
                 });
             }
-            console.log(newNote);
             newNote.save();
             self.fetch();
         }
@@ -340,12 +339,16 @@ var SingleTicket = Backbone.View.extend({
     getNote: function(e){
         var self = this;
         var dataText = $($('em', e.currentTarget)[0]).attr('data-original-title');
-        if (dataText){
-            var from = dataText.slice(dataText.indexOf('From:')+5, dataText.indexOf(' '))+':';
-        } else {
-            dataText = $($('span', e.currentTarget)[0]).attr('data-original-title');
-            var from = dataText.slice(dataText.indexOf('From:')+5, dataText.length)+':';
-        }
+        if ($(e.currentTarget)[0].id !== 'addNote'){$
+            if (dataText && $(e.currentTarget)[0].id !== 'addNote'){$
+                var from = dataText.slice(dataText.indexOf('From:')+5, dataText.indexOf(' '))+':';$
+            } else {$
+                dataText = $($('span', e.currentTarget)[0]).attr('data-original-title');$
+                var from = dataText.slice(dataText.indexOf('From:')+5, dataText.length)+':';$
+            }$
+        } else {$
+            var from = '';$
+        }$
         $('#addNote', self.el).remove();
         $('#ticketNotes', self.el).append('<li id="newNoteList"><div class="input-append"><input id="newNote" type="text" class="input span2"><button class="btn cancel"><i class="icon-remove"></i></button></div></li>');
         $('.ticketNote').each(function(){

@@ -472,7 +472,7 @@ def note(note_id):
             return JSON_ERROR
     elif request.method == 'DELETE':
         this_note = Note.get_by_id(int(note_id))
-        if this_note:
+        if not this_note:
             return JSON_ERROR
         if note_permissions(this_note, this_user, 'delete'):
             this_note.delete()
